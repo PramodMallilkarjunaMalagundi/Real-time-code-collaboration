@@ -80,34 +80,34 @@ body {
       }
 
       .copy-button {
-        padding: .5rem;
+        padding: 0.5rem 1rem;
         background-color: #3498db;
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        transform: background-color 0.3s ease;
+        transition: background-color 0.3s ease;
 
         &:hover {
           background-color: #2980b9;
         }
       }
 
-      .copy-success{
-        margin-left: .5rem;
+      .copy-success {
+        margin-left: 0.5rem;
         color: rgb(38, 167, 38);
         font-size: 0.8rem;
       }
     }
 
-    h3{
+    h3 {
       margin-top: 1.5rem;
-      margin-bottom: .5rem;
+      margin-bottom: 0.5rem;
       font-size: 1rem;
     }
-    ul{
+    ul {
       list-style: none;
-      li{
+      li {
         padding: 0.5rem;
         font-size: 0.9rem;
         background: gray;
@@ -116,25 +116,26 @@ body {
       }
     }
 
-    .typing-indicator{
+    .typing-indicator {
       margin-top: 1rem;
       font-size: 1rem;
       color: white;
     }
 
-    .language-selector{
+    .language-selector {
       margin-top: 1rem;
       width: 100%;
-      padding: .5rem;
+      padding: 0.5rem;
       background-color: #34495e;
       color: white;
       border: none;
       border-radius: 4px;
     }
-    .leave-button{
+
+    .leave-button {
       margin-top: 1rem;
       width: 100%;
-      padding: .75rem;
+      padding: 0.75rem;
       background-color: #e74c3c;
       color: white;
       border: none;
@@ -143,13 +144,27 @@ body {
       cursor: pointer;
       transition: background-color 0.3s ease;
 
-      &:hover{
+      &:hover {
         background-color: #ab2a1c;
       }
     }
   }
-  .editor-wrapper{
+
+  .editor-wrapper {
     flex-grow: 1;
     background-color: #fff;
   }
+}
+
+.run-btn {
+  background-color: rgb(12, 209, 38);
+  padding: 10px;
+}
+
+.output-console {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  font-size: 20px;
+  height: 200px;
 }
