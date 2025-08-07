@@ -1,161 +1,118 @@
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import path from "path";
-import axios from "axios";
+// =================================================================
+//                      IMPORTS AND SETUP
+// =================================================================
+
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors"); // Import the cors package
 
 const app = express();
 const server = http.createServer(app);
 
-// --- RENDER.COM DEPLOYMENT HELPER ---
-// This keeps your free Render.com instance from sleeping.
-const url = `https://real-time-code-collaboration-and-code.onrender.com`;
-const interval = 14 * 60 * 1000; // Ping every 14 minutes
+// Get the frontend URL from environment variables for production,
+// with a fallback for local development.
+const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
 
-function selfPing() {
-  axios
-    .get(url)
-    .then((response) => {
-      console.log("Ping successful: Website is awake.");
-    })
-    .catch((error) => {
-      console.error(`Ping failed: ${error.message}`);
-    });
-}
+// =================================================================
+//             MIDDLEWARE AND CORS CONFIGURATION
+// =================================================================
 
-// Don't ping in a local environment
-if (process.env.NODE_ENV === "production") {
-  setInterval(selfPing, interval);
-}
+// 1. Set up Express CORS Middleware
+// This allows your Express server to accept requests from your frontend.
+app.use(cors({
+    origin: frontendURL,
+}));
 
 
-// --- SOCKET.IO SERVER SETUP ---
+// 2. Set up Socket.IO CORS Configuration
+// This allows the WebSocket connection to be established from your frontend.
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allows connections from any origin
-    methods: ["GET", "POST"],
+    origin: frontendURL, // The URL of your Vercel frontend
+    methods: ["GET", "POST"], // Allowed methods
   },
 });
 
-// Using a Map to store rooms and the users in them (as a Set for uniqueness)
-const rooms = new Map();
+
+// =================================================================
+//                SOCKET.IO REAL-TIME LOGIC
+//         (This is where your existing logic lives)
+// =================================================================
+
+// This object will store which users are in which rooms.
+const userSocketMap = {};
+
+function getAllConnectedClients(roomId) {
+  // This gets a list of all socket IDs in a room.
+  const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
+  // We then map these socket IDs to their usernames.
+  return socketIds.map((socketId) => {
+    return {
+      socketId,
+      username: userSocketMap[socketId],
+    };
+  });
+}
 
 io.on("connection", (socket) => {
-  console.log("User Connected:", socket.id);
+  console.log("A user connected, socket ID:", socket.id);
 
-  let currentRoom = null;
-  let currentUser = null;
-
-  // --- JOIN ROOM LOGIC ---
-  socket.on("join", ({ roomId, userName }) => {
-    // If user is already in a room, handle leaving it first
-    if (currentRoom) {
-      socket.leave(currentRoom);
-      const userSet = rooms.get(currentRoom);
-      if (userSet) {
-        userSet.delete(currentUser);
-        io.to(currentRoom).emit("userJoined", Array.from(userSet));
-      }
-    }
-
-    currentRoom = roomId;
-    currentUser = userName;
-
+  // 'JOIN' event: When a user wants to join a room
+  socket.on("join", ({ roomId, username }) => {
+    userSocketMap[socket.id] = username;
     socket.join(roomId);
 
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, new Set());
-    }
-    rooms.get(roomId).add(userName);
-
-    // Broadcast the updated user list to everyone in the room
-    io.to(roomId).emit("userJoined", Array.from(rooms.get(roomId)));
-    console.log(`User ${userName} joined room ${roomId}. Users:`, Array.from(rooms.get(roomId)));
-  });
-
-  // --- REAL-TIME EVENT HANDLERS ---
-  socket.on("codeChange", ({ roomId, code }) => {
-    socket.to(roomId).emit("codeUpdate", code);
-  });
-
-  socket.on("typing", ({ roomId, userName }) => {
-    socket.to(roomId).emit("userTyping", userName);
-  });
-
-  socket.on("languageChange", ({ roomId, language }) => {
-    io.to(roomId).emit("languageUpdate", language);
-  });
-
-  // --- CODE COMPILATION WITH STDIN ---
-  socket.on("compileCode", async ({ code, roomId, language, version, stdin }) => {
-    console.log(`Compile request for Room ${roomId}:`, { language, stdin });
-
-    if (!rooms.has(roomId)) {
-      return; // Room doesn't exist
-    }
-
-    try {
-      const response = await axios.post(
-        "https://emkc.org/api/v2/piston/execute",
-        {
-          language: language,
-          version: version,
-          files: [{ content: code }],
-          stdin: stdin, // Pass the user's input to the API
-        }
-      );
-      // Send the entire response back to all clients in the room
-      io.to(roomId).emit("codeResponse", response.data);
-    } catch (error) {
-      console.error("Piston API Error:", error.response ? error.response.data : error.message);
-      // Send a user-friendly error message back to the client
-      io.to(roomId).emit("codeResponse", {
-        run: { output: `Error: Could not execute code. ${error.response?.data?.message || ''}` },
+    const clients = getAllConnectedClients(roomId);
+    console.log(`User ${username} joined room ${roomId}. Clients in room:`, clients);
+    
+    // Notify all clients in the room that a new user has joined.
+    clients.forEach(({ socketId }) => {
+      io.to(socketId).emit("joined", {
+        clients,
+        username,
+        socketId: socket.id,
       });
-    }
+    });
   });
 
-  // --- LEAVE & DISCONNECT LOGIC ---
-  const handleLeave = () => {
-    if (currentRoom && currentUser) {
-      const userSet = rooms.get(currentRoom);
-      if (userSet) {
-        userSet.delete(currentUser);
-        // If the room is now empty, delete it
-        if (userSet.size === 0) {
-          rooms.delete(currentRoom);
-          console.log(`Room ${currentRoom} is now empty and has been closed.`);
-        } else {
-          // Otherwise, just update the user list for remaining users
-          io.to(currentRoom).emit("userJoined", Array.from(userSet));
-          console.log(`User ${currentUser} left room ${currentRoom}. Users:`, Array.from(userSet));
-        }
-      }
-      socket.leave(currentRoom);
-    }
-    currentRoom = null;
-    currentUser = null;
-  };
+  // 'CODE_CHANGE' event: When code is updated in the editor
+  socket.on("code-change", ({ roomId, code }) => {
+    // Broadcast the code change to all other clients in the same room.
+    socket.in(roomId).emit("code-change", { code });
+  });
 
-  socket.on("leaveRoom", handleLeave);
+  // 'SYNC_CODE' event: When a new user joins, get the current code
+  socket.on("sync-code", ({ socketId, code }) => {
+    io.to(socketId).emit("code-change", { code });
+  });
+
+  // 'disconnecting' event: When a user starts to disconnect
+  socket.on("disconnecting", () => {
+    const rooms = [...socket.rooms];
+    rooms.forEach((roomId) => {
+      // For each room the user is in, notify others that they are leaving.
+      socket.in(roomId).emit("disconnected", {
+        socketId: socket.id,
+        username: userSocketMap[socket.id],
+      });
+    });
+    delete userSocketMap[socket.id];
+    socket.leave();
+  });
+
   socket.on("disconnect", () => {
-    handleLeave();
-    console.log("User Disconnected:", socket.id);
+    console.log("A user disconnected, socket ID:", socket.id);
   });
 });
 
-// --- EXPRESS STATIC FILE SERVING ---
-const port = process.env.PORT || 5000;
-const __dirname = path.resolve();
 
-// Serve the built React app from the 'frontend/dist' directory
-app.use(express.static(path.join(__dirname, "/frontend/dist")));
+// =================================================================
+//                      START THE SERVER
+// =================================  ================================
 
-// For any other route, serve the index.html file (for client-side routing)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
-});
-
-server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Use the port provided by Render, or 5000 for local development.
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () =>
+  console.log(`Server is running on port ${PORT}`)
+);
