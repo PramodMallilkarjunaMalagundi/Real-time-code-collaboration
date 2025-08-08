@@ -82,6 +82,16 @@ io.on("connection", (socket) => {
     socket.in(roomId).emit("code-change", { code });
   });
 
+  // =================================================================
+  //        *** NEW CODE BLOCK FOR TYPING INDICATOR ***
+  // =================================================================
+  // 'TYPING' event: When a user starts typing in the editor
+  socket.on('typing', ({ roomId, username }) => {
+    // Broadcast to all other clients in the room that this user is typing.
+    socket.to(roomId).emit('typing', { username });
+  });
+  // =================================================================
+
   // 'SYNC_CODE' event: When a new user joins, get the current code
   socket.on("sync-code", ({ socketId, code }) => {
     io.to(socketId).emit("code-change", { code });
@@ -109,7 +119,7 @@ io.on("connection", (socket) => {
 
 // =================================================================
 //                      START THE SERVER
-// =================================  ================================
+// =================================================================
 
 // Use the port provided by Render, or 5000 for local development.
 const PORT = process.env.PORT || 5000;

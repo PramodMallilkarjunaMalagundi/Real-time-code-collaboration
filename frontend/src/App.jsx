@@ -4,9 +4,9 @@ import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
 // --- Configuration ---
-// Change this URL to your deployed server URL when you deploy.
-// For local development, it should point to your local server.
-const SERVER_URL = "http://localhost:5000";
+// FIXED: Use environment variables for the server URL. This is crucial for deployment.
+// Vercel will provide this value. For local dev, create a .env.local file.
+const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 
 function App() {
@@ -17,25 +17,22 @@ function App() {
   const [joined, setJoined] = useState(false);
 
   // State for the editor and collaboration
-  const [connectedUsers, setConnectedUsers] = useState([]);
+  // FIXED: Renamed for clarity from connectedUsers to clients
+  const [clients, setClients] = useState([]); 
   const [typingUser, setTypingUser] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("// Start coding here...");
-  const [stdin, setStdin] = useState(""); // For user input to the program
+  const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
 
   // --- REFS ---
-  // Use a ref to hold the socket instance. It persists across re-renders.
   const socketRef = useRef(null);
-  // Use a ref to manage the timer for the "is typing" indicator
   const typingTimeoutRef = useRef(null);
 
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
-    // This effect handles the socket connection lifecycle.
-    // It runs only when the user's `joined` status changes.
     if (!joined) return;
 
     // 1. CREATE AND CONNECT SOCKET
@@ -43,28 +40,48 @@ function App() {
     const socket = socketRef.current;
 
     // 2. EMIT JOIN EVENT
+    // The backend will receive this and add the user to the room.
     socket.emit("join", { roomId, userName });
 
-    // 3. SETUP EVENT LISTENERS
-    socket.on("userJoined", (usersFromServer) => {
-      console.log("Users in room:", usersFromServer);
-      setConnectedUsers(usersFromServer);
+    // 3. SETUP EVENT LISTENERS (This section contains the main fixes)
+    
+    // FIXED: The backend sends 'joined', not 'userJoined'.
+    // The payload is an object containing the full client list.
+    socket.on("joined", ({ clients: serverClients, username, socketId }) => {
+      console.log(`${username} joined the room.`);
+      // Update the state with the complete list of clients from the server.
+      setClients(serverClients); 
     });
 
-    socket.on("codeUpdate", (newCode) => {
+    // FIXED: The backend sends 'code-change', not 'codeUpdate'.
+    // The payload is an object { code: newCode }.
+    socket.on("code-change", ({ code: newCode }) => {
       setCode(newCode);
     });
 
-    socket.on("userTyping", (user) => {
-      setTypingUser(`${user}...`);
+    // FIXED: The backend sends 'typing', not 'userTyping'.
+    // The payload is an object { username: user }.
+    socket.on("typing", ({ username }) => {
+      setTypingUser(username); // Just the name, we add " is typing..." in the UI
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
       typingTimeoutRef.current = setTimeout(() => {
         setTypingUser("");
-      }, 3000); // Indicator disappears after 3 seconds of inactivity
+      }, 2000); 
+    });
+    
+    // ADDED: A listener for when a user disconnects.
+    socket.on("disconnected", ({ socketId, username }) => {
+      console.log(`${username} left the room.`);
+      // Filter the clients list to remove the user who left.
+      setClients((prevClients) => {
+        return prevClients.filter((client) => client.socketId !== socketId);
+      });
     });
 
+    // Your other listeners (languageUpdate, codeResponse) may also need
+    // to be checked against your backend if they are custom.
     socket.on("languageUpdate", (newLanguage) => {
       setLanguage(newLanguage);
     });
@@ -73,11 +90,15 @@ function App() {
       setOutput(response.run.output || response.run.stderr || "No output.");
     });
 
+
     // 4. CLEANUP LOGIC
-    // This function runs when the component unmounts or before the effect re-runs.
     return () => {
-      socket.emit("leaveRoom");
       socket.disconnect();
+      // ADDED: Make sure to remove all listeners on cleanup.
+      socket.off('joined');
+      socket.off('code-change');
+      socket.off('typing');
+      socket.off('disconnected');
       socketRef.current = null;
     };
   }, [joined, roomId, userName]);
@@ -92,10 +113,9 @@ function App() {
 
   const handleLeaveRoom = () => {
     setJoined(false);
-    // Reset all relevant state
     setRoomId("");
     setUserName("");
-    setConnectedUsers([]);
+    setClients([]);
     setCode("// Start coding here...");
     setLanguage("javascript");
     setOutput("");
@@ -111,7 +131,9 @@ function App() {
   const handleCodeChange = (newCode) => {
     setCode(newCode);
     if (socketRef.current) {
-      socketRef.current.emit("codeChange", { roomId, code: newCode });
+      // FIXED: The backend event is 'code-change'.
+      socketRef.current.emit("code-change", { roomId, code: newCode });
+      // FIXED: The backend event is 'typing'.
       socketRef.current.emit("typing", { roomId, userName });
     }
   };
@@ -127,47 +149,26 @@ function App() {
   const handleRunCode = () => {
     setOutput("Executing...");
     if (socketRef.current) {
-      // Send code AND the stdin content
-      socketRef.current.emit("compileCode", {
-        code,
-        roomId,
-        language,
-        version: "*", // Or manage version state if needed
-        stdin,
-      });
+      socketRef.current.emit("compileCode", { code, roomId, language, version: "*", stdin });
     }
   };
 
 
   // --- RENDER LOGIC ---
-
-  // Show the Join Room form if the user hasn't joined yet
   if (!joined) {
     return (
       <div className="join-container">
+        {/* ... The Join Room form remains the same ... */}
         <div className="join-form">
           <h1>Real-Time Code Editor</h1>
-          <input
-            type="text"
-            placeholder="Room ID"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
-          />
-          <input
-            type="text"
-            placeholder="Your Name"
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
-          />
+          <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
           <button onClick={handleJoinRoom}>Join Room</button>
         </div>
       </div>
     );
   }
 
-  // Show the main editor if the user has joined
   return (
     <div className="editor-container">
       <div className="sidebar">
@@ -177,64 +178,30 @@ function App() {
             {copySuccess || "Copy ID"}
           </button>
         </div>
-        <h3>Users ({connectedUsers.length})</h3>
+        {/* FIXED: The state is now named `clients` */}
+        <h3>Users ({clients.length})</h3>
         <ul className="user-list">
-          {connectedUsers.map((user) => (
-            <li key={user}>{user}</li>
+          {/* FIXED: `clients` is an array of objects, so we need to access `client.username` */}
+          {clients.map((client) => (
+            <li key={client.socketId}>{client.username}</li>
           ))}
         </ul>
         <p className="typing-indicator">
+          {/* FIXED: Display logic for typing indicator */}
           {typingUser ? `${typingUser} is typing...` : "\u00A0"}
         </p>
-        <select
-          className="language-selector"
-          value={language}
-          onChange={handleLanguageChange}
-        >
-          <option value="javascript">JavaScript</option>
-          <option value="python">Python</option>
-          <option value="java">Java</option>
-          <option value="cpp">C++</option>
-          <option value="go">Go</option>
-          <option value="rust">Rust</option>
+        <select className="language-selector" value={language} onChange={handleLanguageChange}>
+          {/* ... Options remain the same ... */}
+          <option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option><option value="cpp">C++</option><option value="go">Go</option><option value="rust">Rust</option>
         </select>
-        <button className="leave-button" onClick={handleLeaveRoom}>
-          Leave Room
-        </button>
+        <button className="leave-button" onClick={handleLeaveRoom}> Leave Room </button>
       </div>
 
       <div className="editor-wrapper">
-        <Editor
-          height="55%"
-          language={language}
-          value={code}
-          onChange={handleCodeChange}
-          theme="vs-dark"
-          options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}
-        />
-        <div className="io-wrapper">
-          <div className="input-area">
-            <h4>Input </h4>
-            <textarea
-              className="io-console"
-              value={stdin}
-              onChange={(e) => setStdin(e.target.value)}
-              placeholder="Enter program input here..."
-            />
-          </div>
-          <div className="output-area">
-            <h4>Output</h4>
-            <textarea
-              className="io-console"
-              value={output}
-              readOnly
-              placeholder="Output will appear here..."
-            />
-          </div>
-        </div>
-        <button className="run-btn" onClick={handleRunCode}>
-          Execute Code
-        </button>
+        {/* ... Editor and IO areas remain the same ... */}
+        <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}/>
+        <div className="io-wrapper"><div className="input-area"><h4>Input </h4><textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/></div><div className="output-area"><h4>Output</h4><textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/></div></div>
+        <button className="run-btn" onClick={handleRunCode}> Execute Code </button>
       </div>
     </div>
   );
