@@ -13,13 +13,11 @@ body {
 /* --- Styles for the Blurred Background Effect --- */
 /* ================================================= */
 
-/* This is a special class we'll apply when the modal is open */
 .app-container.blurred .editor-container {
   filter: blur(5px) brightness(0.7);
-  pointer-events: none; /* Prevent interaction with the blurred background */
+  pointer-events: none;
   transition: filter 0.3s ease-in-out;
 }
-
 
 /* ================================================= */
 /* --- Styles for the Join Modal --- */
@@ -87,7 +85,6 @@ body {
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
 /* ================================================= */
-/* These styles are for the main editor view, which is now the background */
 
 .editor-container {
   display: flex;
@@ -106,13 +103,9 @@ body {
 
 .room-info {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #3c3c3c;
   padding-bottom: 1rem;
+  border-bottom: 1px solid #3c3c3c;
+  text-align: center;
 }
 
 .room-info h2 {
@@ -124,7 +117,7 @@ body {
 .sidebar h3 {
   flex-shrink: 0;
   margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
   font-size: 1rem;
   color: #d4d4d4;
 }
@@ -157,34 +150,21 @@ body {
   flex-shrink: 0;
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid #3c3c3c;
-  flex-shrink: 0;
-}
-
-.lock-manager {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background-color: #1e1e1e;
-  border-radius: 6px;
-  border: 1px solid #3c3c3c;
-}
-
-.lock-status {
+/* UPDATED: Styles for the relocated typing indicator */
+.typing-indicator {
   font-size: 0.9rem;
-  text-align: center;
-  margin-bottom: 0.75rem;
+  font-style: italic;
+  font-weight: bold;
+  color: #a0a0a0;
+  height: 20px;
+  margin-top: auto; /* Pushes it down towards the footer */
+  margin-bottom: 1rem;
+  padding-top: 1rem; /* Space above it */
+  border-top: 1px solid #3c3c3c; /* The dividing line is now here */
 }
 
-.lock-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.lock-buttons .btn {
-  flex: 1;
+.sidebar-footer {
+  flex-shrink: 0;
 }
 
 .language-selector {

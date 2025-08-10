@@ -16,13 +16,11 @@ function App() {
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
-
-  // ADDED: State for typing indicator
   const [typingUser, setTypingUser] = useState("");
   
   // --- REFS ---
   const socketRef = useRef(null);
-  const typingTimeoutRef = useRef(null); // Ref to manage the typing timeout
+  const typingTimeoutRef = useRef(null);
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -41,21 +39,14 @@ function App() {
       setCode(newCode);
     });
 
-    // ADDED: Listener for typing indicator
     socket.on('typing', ({ username }) => {
-      // Don't show typing indicator for myself
       if (username !== userName) {
         setTypingUser(username);
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-        typingTimeoutRef.current = setTimeout(() => {
-          setTypingUser("");
-        }, 2000); // Hide indicator after 2 seconds of inactivity
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setTypingUser(""), 2000);
       }
     });
 
-    // ADDED: Listener for language synchronization
     socket.on('language-change', ({ language: newLanguage }) => {
       setLanguage(newLanguage);
     });
@@ -73,62 +64,54 @@ function App() {
 
   // --- EVENT HANDLERS ---
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
-  
   const handleLeaveRoom = () => {
     setJoined(false);
     setRoomId(""); setUserName(""); setClients([]);
     setCode("// Start coding here...");
   };
-  
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId);
     setCopySuccess("Copied!");
     setTimeout(() => setCopySuccess(""), 2000);
   };
-
   const handleCodeChange = (newCode) => {
     setCode(newCode);
     if (socketRef.current) {
       socketRef.current.emit("code-change", { roomId, code: newCode });
-      // Emit typing event on code change
       socketRef.current.emit("typing", { roomId, username: userName });
     }
   };
-
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
-    // We update the state locally immediately for a responsive feel,
-    // but the server will send back the authoritative state.
     setLanguage(newLanguage);
     if (socketRef.current) {
-      // Tell the server about the language change so it can broadcast
       socketRef.current.emit("language-change", { roomId, language: newLanguage });
     }
   };
-
   const handleRunCode = () => { /* ... */ };
 
-
   // --- RENDER LOGIC ---
-  if (!joined) {
-    return (
-      <div className="join-modal-overlay">
-        <div className="join-modal-content">
-          <h1>Real-Time Code Editor</h1>
-          <input type="text" placeholder="Enter Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-          <input type="text" placeholder="Enter Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-          <button className="btn btn-join" onClick={handleJoinRoom}>Join Room</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="app-container">
+    // The main container includes a dynamic 'blurred' class
+    <div className={`app-container ${!joined ? 'blurred' : ''}`}>
+      
+      {/* Conditionally rendered Join Modal */}
+      {!joined && (
+        <div className="join-modal-overlay">
+          <div className="join-modal-content">
+            <h1>Real-Time Code Editor</h1>
+            <input type="text" placeholder="Enter Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+            <input type="text" placeholder="Enter Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+            <button className="btn btn-join" onClick={handleJoinRoom}>Join Room</button>
+          </div>
+        </div>
+      )}
+
+      {/* The Editor page is always rendered */}
       <div className="editor-container">
         <div className="sidebar">
           <div className="room-info">
-            <h2>Room: {roomId}</h2>
+            <h2>Room: {roomId || '...'}</h2>
             <button onClick={handleCopyRoomId} className="btn btn-secondary">
               {copySuccess || "Copy ID"}
             </button>
@@ -138,19 +121,18 @@ function App() {
           <ul className="user-list">
             {clients.map((client) => (
               <li key={client.socketId} className="client-item">
-                <div className="avatar">
-                  {client.username ? client.username.charAt(0).toUpperCase() : '?'}
-                </div>
+                <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
                 <span className="username">{client.username}</span>
               </li>
             ))}
           </ul>
 
+          {/* MOVED: Typing indicator is now here, above the footer */}
+          <p className="typing-indicator">
+            {typingUser ? `${typingUser} is typing...` : "\u00A0"}
+          </p>
+
           <div className="sidebar-footer">
-             {/* Typing Indicator UI */}
-            <p className="typing-indicator">
-              {typingUser ? `${typingUser} is typing...` : "\u00A0"}
-            </p>
             <select className="language-selector" value={language} onChange={handleLanguageChange}>
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -164,14 +146,7 @@ function App() {
         </div>
 
         <div className="editor-wrapper">
-          <Editor
-            height="55%"
-            language={language}
-            value={code}
-            onChange={handleCodeChange}
-            theme="vs-dark"
-            options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}
-          />
+          <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }} />
           <div className="io-wrapper">
             <div className="input-area">
               <h4>Input</h4>
