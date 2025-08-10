@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
+// ADDED: Import the toast library
+import toast, { Toaster } from 'react-hot-toast';
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -15,7 +17,8 @@ function App() {
   const [code, setCode] = useState("// Start coding here...");
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
-  const [copySuccess, setCopySuccess] = useState("");
+  // REMOVED: The copySuccess state is no longer needed, toast will handle it.
+  // const [copySuccess, setCopySuccess] = useState("");
 
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -29,6 +32,10 @@ function App() {
     socket.emit("join", { roomId, username: userName });
 
     socket.on("joined", ({ clients: serverClients, username, socketId }) => {
+      // CHANGED: Show a toast notification when another user joins.
+      if (username !== userName) {
+        toast.success(`${username} joined the room!`);
+      }
       setClients(serverClients);
     });
 
@@ -47,6 +54,8 @@ function App() {
     });
 
     socket.on("disconnected", ({ socketId, username }) => {
+      // CHANGED: Show a toast notification when a user leaves.
+      toast.error(`${username} left the room.`);
       setClients((prevClients) => {
         return prevClients.filter((client) => client.socketId !== socketId);
       });
@@ -89,8 +98,8 @@ function App() {
 
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId);
-    setCopySuccess("Copied!");
-    setTimeout(() => setCopySuccess(""), 2000);
+    // CHANGED: Use a toast notification instead of state for feedback.
+    toast.success('Room ID copied to clipboard!');
   };
 
   const handleCodeChange = (newCode) => {
@@ -119,6 +128,8 @@ function App() {
   if (!joined) {
     return (
       <div className="join-container">
+        {/* ADDED: The Toaster component is needed to display notifications */}
+        <Toaster position="top-center" />
         <div className="join-form">
           <h1>Real-Time Code Editor</h1>
           <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
@@ -131,11 +142,22 @@ function App() {
 
   return (
     <div className="editor-container">
+      {/* ADDED: The Toaster component for the editor page, styled for the dark theme. */}
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#3c3c3c',
+            color: '#fff',
+          },
+        }}
+      />
       <div className="sidebar">
         <div className="room-info">
           <h2>Room: {roomId}</h2>
+          {/* CHANGED: The button text no longer needs to change */}
           <button onClick={handleCopyRoomId} className="btn btn-secondary">
-            {copySuccess || "Copy ID"}
+            Copy ID
           </button>
         </div>
 
@@ -151,7 +173,6 @@ function App() {
           ))}
         </ul>
 
-        {/* The 'typing indicator' and 'sidebar footer' are now grouped at the bottom */}
         <div className="sidebar-footer">
             <p className="typing-indicator">
                 {typingUser ? `${typingUser} is typing...` : "\u00A0"}
