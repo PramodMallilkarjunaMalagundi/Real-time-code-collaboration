@@ -4,7 +4,6 @@
   box-sizing: border-box;
 }
 
-/* --- Original Body Style (Light/Gradient) --- */
 body {
   font-family: "Roboto", "sans-serif";
   background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
@@ -14,16 +13,13 @@ body {
 /* ================================================= */
 /* --- Styles for the LIGHT Join Page --- */
 /* ================================================= */
-
 .join-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  /* This specific gradient was used for the original light join page */
   background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
 }
-
 .join-container .join-form {
   background-color: #f5f5f5;
   color: #000;
@@ -33,15 +29,13 @@ body {
   text-align: center;
   width: 320px;
 }
-
 .join-container .join-form h1 {
   margin-bottom: 1.5rem;
   color: #444;
 }
-
 .join-container .join-form input {
-  background-color: #fff; /* Light background for input */
-  color: #000; /* Dark text for input */
+  background-color: #fff;
+  color: #000;
   width: 100%;
   padding: 0.75rem;
   margin-bottom: 1rem;
@@ -49,7 +43,6 @@ body {
   border-radius: 6px;
   font-size: 1rem;
 }
-
 .join-container .join-form button {
   width: 100%;
   padding: 0.75rem;
@@ -61,7 +54,6 @@ body {
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-
 .join-container .join-form button:hover {
   background-color: #4a00e0;
 }
@@ -69,19 +61,18 @@ body {
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
 /* ================================================= */
-
 .editor-container {
   display: flex;
   height: 100vh;
-  background-color: #1e1e1e; /* THIS IS THE KEY CHANGE - The dark theme starts here */
+  background-color: #1e1e1e;
 }
 
 .editor-container .sidebar {
   width: 260px;
   padding: 1.5rem;
-  background-color: #2a2d34; /* Dark sidebar */
+  background-color: #2a2d34;
   color: #d4d4d4;
-  border-right: 1px solid #3c3c3c; /* Subtle border */
+  border-right: 1px solid #3c3c3c;
   display: flex;
   flex-direction: column;
 }
@@ -106,25 +97,34 @@ body {
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
   font-size: 1rem;
-  color: #d4d4d4; /* Light text on dark background */
+  color: #d4d4d4;
 }
 
 .editor-container .sidebar .user-list {
   list-style: none;
   padding: 0;
+  /* This allows the list to scroll if there are many users */
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
 .editor-container .sidebar .typing-indicator {
-  margin-top: auto;
   padding-top: 1rem;
   font-size: 0.9rem;
   color: #8e8e8e;
   font-weight: bold;
-  height: 40px;
+  height: 40px; /* Reserve space for the indicator */
+  flex-shrink: 0; /* Prevent it from shrinking */
+}
+
+/* *** NEW CONTAINER FOR FOOTER ELEMENTS *** */
+.sidebar-footer {
+  margin-top: auto; /* This is the key change to push it to the bottom */
+  padding-top: 1rem;
+  border-top: 1px solid #3c3c3c; /* Add a separator line */
 }
 
 .editor-container .sidebar .language-selector {
-  margin-top: 1rem;
   width: 100%;
   padding: 0.5rem;
   background-color: #1e1e1e;
@@ -153,7 +153,7 @@ body {
 }
 .input-area h4, .output-area h4 {
   margin-bottom: 5px;
-  color: #d4d4d4; /* Light text */
+  color: #d4d4d4;
 }
 .io-console {
   flex-grow: 1;
@@ -172,7 +172,6 @@ body {
   align-items: center;
   margin-bottom: 12px;
 }
-
 .avatar {
   width: 40px;
   height: 40px;
@@ -198,25 +197,27 @@ body {
   border: 2px solid transparent;
   transition: all 0.2s ease-in-out;
 }
-
 .btn-primary {
   background-color: #ff9800;
   color: #1e1e1e;
 }
-
 .btn-primary:hover {
   background-color: #e68900;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
-
 .btn-secondary {
   background-color: transparent;
   color: #d4d4d4;
   border-color: #3c3c3c;
 }
-
 .btn-secondary:hover {
   background-color: #3c3c3c;
   border-color: #8e8e8e;
+}
+
+/* --- Styling for the Leave Button within the footer --- */
+.leave-btn {
+  margin-top: 1rem; /* This now correctly adds space above the button */
+  width: 100%;
 }
