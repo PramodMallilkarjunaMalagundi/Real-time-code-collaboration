@@ -1,3 +1,5 @@
+/* --- COMPLETE DARK THEME --- */
+
 * {
   margin: 0;
   padding: 0;
@@ -6,38 +8,40 @@
 
 body {
   font-family: "Roboto", "sans-serif";
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  color: #000;
+  background-color: #1e1e1e; /* Dark background for the whole page */
+  color: #d4d4d4; /* Light text color for readability */
 }
 
+/* --- Join Form Styles --- */
 .join-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
 }
 
 .join-container .join-form {
-  background-color: #f5f5f5;
-  color: #000;
+  background-color: #2a2d34;
   padding: 2rem;
   border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   text-align: center;
-  width: 320px;
+  width: 350px;
+  border: 1px solid #3c3c3c;
 }
 
 .join-container .join-form h1 {
   margin-bottom: 1.5rem;
-  color: #444;
+  color: #ffffff;
 }
 
 .join-container .join-form input {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
   width: 100%;
   padding: 0.75rem;
   margin-bottom: 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid #3c3c3c;
   border-radius: 6px;
   font-size: 1rem;
 }
@@ -45,7 +49,7 @@ body {
 .join-container .join-form button {
   width: 100%;
   padding: 0.75rem;
-  background-color: #000;
+  background-color: #007acc; /* Bright blue for join action */
   color: #fff;
   border: none !important;
   border-radius: 6px;
@@ -55,10 +59,11 @@ body {
 }
 
 .join-container .join-form button:hover {
-  background-color: #4a00e0;
+  background-color: #005f9e;
 }
 
 
+/* --- Editor Page Styles --- */
 .editor-container {
   display: flex;
   height: 100vh;
@@ -67,9 +72,11 @@ body {
 .editor-container .sidebar {
   width: 260px;
   padding: 1.5rem;
-  background-color: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-  color: #333;
-  border-right: 2px solid #d1e3f3;
+  background-color: #2a2d34; /* Dark sidebar */
+  color: #d4d4d4;
+  border-right: 1px solid #3c3c3c; /* Subtle border */
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-container .sidebar .room-info {
@@ -78,118 +85,129 @@ body {
   justify-content: center;
   align-items: center;
   margin-bottom: 1rem;
+  border-bottom: 1px solid #3c3c3c;
+  padding-bottom: 1rem;
 }
 
 .editor-container .sidebar .room-info h2 {
   margin-bottom: 1rem;
   font-size: 1.2rem;
-  color: #333;
-}
-
-.editor-container .sidebar .room-info .copy-button {
-  padding: 0.5rem 1rem;
-  background-color: #a1c4fd;
-  color: #000;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.editor-container .sidebar .room-info .copy-button:hover {
-  background-color: #ff6f61;
-}
-
-.editor-container .sidebar .room-info .copy-success {
-  margin-left: 0.5rem;
-  color: rgb(38, 167, 38);
-  font-size: 0.8rem;
+  color: #ffffff;
 }
 
 .editor-container .sidebar h3 {
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
   font-size: 1rem;
-  color: #333;
-}
-.editor-container .sidebar ul {
-  list-style: none;
 }
 
-.editor-container .sidebar ul li {
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  background: #a1c4fd;
-  margin-top: 5px;
-  border-radius: 5px;
-  color: #000;
-  font-weight: bold; /* <-- THIS LINE WAS ADDED */
+.editor-container .sidebar .user-list {
+  list-style: none;
+  padding: 0; /* Make sure there's no default padding */
 }
 
 .editor-container .sidebar .typing-indicator {
-  margin-top: 1rem;
-  font-size: 1rem;
-  color: #333;
-  font-weight: bold; /* <-- THIS LINE WAS ADDED */
+  margin-top: auto; /* Push to the bottom */
+  padding-top: 1rem;
+  font-size: 0.9rem;
+  color: #8e8e8e;
+  font-weight: bold;
+  height: 40px; /* Reserve space */
 }
 
 .editor-container .sidebar .language-selector {
   margin-top: 1rem;
   width: 100%;
   padding: 0.5rem;
-  background-color: #a1c4fd;
-  color: #000;
-  border: none;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
   border-radius: 6px;
-}
-
-.editor-container .sidebar .leave-button {
-  margin-top: 1rem;
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #764ba2;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.editor-container .sidebar .leave-button:hover {
-  background-color: #3e275a;
 }
 
 .editor-container .editor-wrapper {
   flex-grow: 1;
-  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
 }
 
+.io-wrapper {
+  display: flex;
+  height: 45%; /* Give more space to I/O */
+  gap: 1rem;
+}
+.input-area, .output-area {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.input-area h4, .output-area h4 {
+  margin-bottom: 5px;
+}
+.io-console {
+  flex-grow: 1;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  resize: none;
+}
 
-.run-btn {
-  background-color: #ff9800;
-  color: #fff;
-  padding: 12px 20px;
+/* --- Styles for User Avatars --- */
+.client-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #007acc;
+  color: white;
+  margin-right: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* --- New Unified Button Styles --- */
+.btn {
+  padding: 10px 20px;
   font-size: 1rem;
   font-weight: bold;
-  border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  transition: all 0.2s ease-in-out;
 }
 
-.run-btn:hover {
+.btn-primary {
+  background-color: #ff9800;
+  color: #1e1e1e;
+}
+
+.btn-primary:hover {
   background-color: #e68900;
-  transform: scale(1.05);
-  box-shadow: 0 6px 8px rgba(255, 136, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
+.btn-secondary {
+  background-color: transparent;
+  color: #d4d4d4;
+  border-color: #3c3c3c;
+}
 
-.output-console {
-  width: 100%;
-  margin-top: 10px;
-  padding: 10px;
-  font-size: 20px;
-  height: 200px;
+.btn-secondary:hover {
+  background-color: #3c3c3c;
+  border-color: #8e8e8e;
 }

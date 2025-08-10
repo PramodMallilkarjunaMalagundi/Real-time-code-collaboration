@@ -26,8 +26,6 @@ function App() {
     socketRef.current = io(SERVER_URL);
     const socket = socketRef.current;
 
-    // *** FINAL FIX HERE ***
-    // Send the `userName` state value under the key `username` (lowercase n)
     socket.emit("join", { roomId, username: userName });
 
     socket.on("joined", ({ clients: serverClients, username, socketId }) => {
@@ -99,9 +97,6 @@ function App() {
     setCode(newCode);
     if (socketRef.current) {
       socketRef.current.emit("code-change", { roomId, code: newCode });
-
-      // *** FINAL FIX HERE ***
-      // Send the `userName` state value under the key `username` (lowercase n)
       socketRef.current.emit("typing", { roomId, username: userName });
     }
   };
@@ -121,6 +116,8 @@ function App() {
     }
   };
 
+  // --- RENDER LOGIC with UI IMPROVEMENTS ---
+
   if (!joined) {
     return (
       <div className="join-container">
@@ -139,28 +136,55 @@ function App() {
       <div className="sidebar">
         <div className="room-info">
           <h2>Room: {roomId}</h2>
-          <button onClick={handleCopyRoomId} className="copy-button">
+          {/* UPDATED: Apply new button classes */}
+          <button onClick={handleCopyRoomId} className="btn btn-secondary">
             {copySuccess || "Copy ID"}
           </button>
         </div>
+        
         <h3>Users ({clients.length})</h3>
+        {/* UPDATED: Use new user list structure with Avatars */}
         <ul className="user-list">
           {clients.map((client) => (
-            <li key={client.socketId}>{client.username}</li>
+            <li key={client.socketId} className="client-item">
+              <div className="avatar">
+                {client.username ? client.username.charAt(0).toUpperCase() : '?'}
+              </div>
+              <span className="username">{client.username}</span>
+            </li>
           ))}
         </ul>
+
         <p className="typing-indicator">
           {typingUser ? `${typingUser} is typing...` : "\u00A0"}
         </p>
+
         <select className="language-selector" value={language} onChange={handleLanguageChange}>
           <option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option><option value="cpp">C++</option><option value="go">Go</option><option value="rust">Rust</option>
         </select>
-        <button className="leave-button" onClick={handleLeaveRoom}> Leave Room </button>
+        
+        {/* UPDATED: Apply new button classes */}
+        <button className="btn btn-secondary" onClick={handleLeaveRoom}>
+          Leave Room
+        </button>
       </div>
+
       <div className="editor-wrapper">
         <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}/>
-        <div className="io-wrapper"><div className="input-area"><h4>Input </h4><textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/></div><div className="output-area"><h4>Output</h4><textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/></div></div>
-        <button className="run-btn" onClick={handleRunCode}> Execute Code </button>
+        <div className="io-wrapper">
+          <div className="input-area">
+            <h4>Input </h4>
+            <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/>
+          </div>
+          <div className="output-area">
+            <h4>Output</h4>
+            <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/>
+          </div>
+        </div>
+        {/* UPDATED: Apply new button classes */}
+        <button className="btn btn-primary" onClick={handleRunCode}>
+          Execute Code
+        </button>
       </div>
     </div>
   );
