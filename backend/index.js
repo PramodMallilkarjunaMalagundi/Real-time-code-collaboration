@@ -5,28 +5,21 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const cors = require("cors"); // Import the cors package
+const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
 
-// Get the frontend URL from environment variables for production,
-// with a fallback for local development.
-const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
+const frontendURL = process.env.FRONTEND_URL;
 
 // =================================================================
 //             MIDDLEWARE AND CORS CONFIGURATION
 // =================================================================
 
-// 1. Set up Express CORS Middleware
-// This allows your Express server to accept requests from your frontend.
-app.use(cors({
-    origin: frontendURL,
-}));
+// This is a standard Express middleware for general CORS, which is good practice.
+app.use(cors({ origin: frontendURL }));
 
-
-// 2. Set up Socket.IO CORS Configuration
-// This allows the WebSocket connection to be established from your frontend.
+// This is the specific CORS configuration for Socket.IO.
 const io = new Server(server, {
   cors: {
     origin: frontendURL, // The URL of your Vercel frontend
@@ -37,37 +30,32 @@ const io = new Server(server, {
 
 // =================================================================
 //                SOCKET.IO REAL-TIME LOGIC
-//         (This is where your existing logic lives)
 // =================================================================
 
-// This object will store which users are in which rooms.
 const userSocketMap = {};
 
 function getAllConnectedClients(roomId) {
-  // This gets a list of all socket IDs in a room.
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
-  // We then map these socket IDs to their usernames.
-  return socketIds.map((socketId) => {
-    return {
-      socketId,
-      username: userSocketMap[socketId],
-    };
-  });
+  return socketIds.map((socketId) => ({
+    socketId,
+    username: userSocketMap[socketId],
+  }));
 }
 
 io.on("connection", (socket) => {
-  console.log("A user connected, socket ID:", socket.id);
+  console.log("BACKEND LOG: A user connected, socket ID:", socket.id);
 
-  // 'JOIN' event: When a user wants to join a room
   socket.on("join", ({ roomId, username }) => {
     userSocketMap[socket.id] = username;
     socket.join(roomId);
 
     const clients = getAllConnectedClients(roomId);
-    console.log(`User ${username} joined room ${roomId}. Clients in room:`, clients);
+    console.log(`BACKEND LOG: User ${username} joined room ${roomId}.`);
     
     // Notify all clients in the room that a new user has joined.
     clients.forEach(({ socketId }) => {
+      // *** FINAL DEBUG LOG ***
+      console.log(`BACKEND LOG: Attempting to send 'joined' event to ${socketId}`);
       io.to(socketId).emit("joined", {
         clients,
         username,
@@ -76,32 +64,23 @@ io.on("connection", (socket) => {
     });
   });
 
-  // 'CODE_CHANGE' event: When code is updated in the editor
   socket.on("code-change", ({ roomId, code }) => {
-    // Broadcast the code change to all other clients in the same room.
-    socket.in(roomId).emit("code-change", { code });
+    socket.to(roomId).emit("code-change", { code });
   });
 
-  // =================================================================
-  //        *** NEW CODE BLOCK FOR TYPING INDICATOR ***
-  // =================================================================
-  // 'TYPING' event: When a user starts typing in the editor
   socket.on('typing', ({ roomId, username }) => {
-    // Broadcast to all other clients in the room that this user is typing.
+    // *** FINAL DEBUG LOG ***
+    console.log(`BACKEND LOG: Received 'typing' from ${username}, broadcasting to room ${roomId}`);
     socket.to(roomId).emit('typing', { username });
   });
-  // =================================================================
 
-  // 'SYNC_CODE' event: When a new user joins, get the current code
   socket.on("sync-code", ({ socketId, code }) => {
     io.to(socketId).emit("code-change", { code });
   });
 
-  // 'disconnecting' event: When a user starts to disconnect
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
-      // For each room the user is in, notify others that they are leaving.
       socket.in(roomId).emit("disconnected", {
         socketId: socket.id,
         username: userSocketMap[socket.id],
@@ -112,7 +91,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("A user disconnected, socket ID:", socket.id);
+    console.log("BACKEND LOG: A user disconnected, socket ID:", socket.id);
   });
 });
 
@@ -120,8 +99,6 @@ io.on("connection", (socket) => {
 // =================================================================
 //                      START THE SERVER
 // =================================================================
-
-// Use the port provided by Render, or 5000 for local development.
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Server is running on port ${PORT}`)
