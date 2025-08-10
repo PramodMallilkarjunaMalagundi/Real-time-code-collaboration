@@ -116,8 +116,6 @@ function App() {
     }
   };
 
-  // --- RENDER LOGIC with UI IMPROVEMENTS ---
-
   if (!joined) {
     return (
       <div className="join-container">
@@ -136,14 +134,12 @@ function App() {
       <div className="sidebar">
         <div className="room-info">
           <h2>Room: {roomId}</h2>
-          {/* UPDATED: Apply new button classes */}
           <button onClick={handleCopyRoomId} className="btn btn-secondary">
             {copySuccess || "Copy ID"}
           </button>
         </div>
 
         <h3>Users ({clients.length})</h3>
-        {/* UPDATED: Use new user list structure with Avatars */}
         <ul className="user-list">
           {clients.map((client) => (
             <li key={client.socketId} className="client-item">
@@ -158,15 +154,26 @@ function App() {
         <p className="typing-indicator">
           {typingUser ? `${typingUser} is typing...` : "\u00A0"}
         </p>
+        
+        {/* =================================================== */}
+        {/* THIS IS THE UPDATED SECTION FOR THE SIDEBAR FOOTER */}
+        {/* =================================================== */}
+        <div className="sidebar-footer">
+            <select className="language-selector" value={language} onChange={handleLanguageChange}>
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+            </select>
 
-        <select className="language-selector" value={language} onChange={handleLanguageChange}>
-          <option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option><option value="cpp">C++</option><option value="go">Go</option><option value="rust">Rust</option>
-        </select>
+            <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>
+                Leave Room
+            </button>
+        </div>
+        {/* =================================================== */}
 
-        {/* UPDATED: Apply new button classes */}
-        <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>
-          Leave Room
-        </button>
       </div>
 
       <div className="editor-wrapper">
@@ -181,7 +188,6 @@ function App() {
             <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..." />
           </div>
         </div>
-        {/* UPDATED: Apply new button classes */}
         <button className="btn btn-primary" onClick={handleRunCode}>
           Execute Code
         </button>
