@@ -6,88 +6,88 @@
 
 body {
   font-family: "Roboto", "sans-serif";
-  background-color: #1e1e1e; /* Set a default dark background */
+  background-color: #1e1e1e;
 }
 
 /* ================================================= */
-/* --- Styles for the Original Join Page --- */
+/* --- Styles for the Blurred Background Effect --- */
 /* ================================================= */
 
-.join-page-wrapper {
-  height: 100vh;
+/* This is a special class we'll apply when the modal is open */
+.app-container.blurred .editor-container {
+  filter: blur(5px) brightness(0.7);
+  pointer-events: none; /* Prevent interaction with the blurred background */
+  transition: filter 0.3s ease-in-out;
+}
+
+
+/* ================================================= */
+/* --- Styles for the Join Modal --- */
+/* ================================================= */
+
+.join-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #d4d4d4;
+  z-index: 1000;
+}
+
+.join-modal-content {
+  background-color: #2a2d34;
+  padding: 2rem 2.5rem;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
   text-align: center;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid #3c3c3c;
+  color: #d4d4d4;
 }
 
-.join-form-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.join-page-title {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 2rem;
+.join-modal-content h1 {
+  margin-bottom: 1.5rem;
   color: #ffffff;
 }
 
-.join-input-group {
-  display: flex;
-  border: 1px solid #3c3c3c;
-  border-radius: 8px;
-  overflow: hidden; /* This is key to making the inputs look like one group */
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-.join-input {
-  background-color: #2a2d34;
-  border: none;
-  padding: 0.8rem 1rem;
-  font-size: 1rem;
+.join-modal-content input {
+  background-color: #1e1e1e;
   color: #d4d4d4;
-  border-right: 1px solid #3c3c3c; /* Separator line */
-}
-
-.join-input:last-of-type {
-  border-right: none;
-}
-
-.join-input:focus {
-  outline: none;
-  background-color: #31353f;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+  font-size: 1rem;
 }
 
 .btn-join {
+  width: 100%;
+  padding: 0.75rem;
   background-color: #007acc;
-  color: white;
-  border: none;
-  font-size: 1rem;
+  color: #fff;
+  border: none !important;
+  border-radius: 6px;
+  font-size: 1.1rem;
   font-weight: bold;
-  padding: 0 1.5rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s ease;
 }
 
 .btn-join:hover {
   background-color: #005f9e;
 }
 
-.join-page-info {
-  margin-top: 1rem;
-  color: #8e8e8e;
-}
-
 
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
 /* ================================================= */
-
-/* All the existing styles for .editor-container, .sidebar, etc., remain here */
-/* ... (The CSS from the previous step for the editor page is still correct) ... */
+/* These styles are for the main editor view, which is now the background */
 
 .editor-container {
   display: flex;

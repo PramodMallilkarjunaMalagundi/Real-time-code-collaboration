@@ -103,47 +103,111 @@ function App() {
     if (socketRef.current) socketRef.current.emit('release-edit-lock', { roomId });
   };
 
+  const amILockHolder = lockHolder === userName;
 
   // --- RENDER LOGIC ---
-
-  // UPDATED: Reverted to the original inline join page UI
-  if (!joined) {
-    return (
-      <div className="join-page-wrapper">
-        <div className="join-form-wrapper">
-          <h1 className="join-page-title">Real-Time Code Editor</h1>
-          <div className="join-input-group">
+  return (
+    // The main container includes a dynamic 'blurred' class
+    <div className={`app-container ${!joined ? 'blurred' : ''}`}>
+      
+      {/* The Join Modal is conditionally rendered ON TOP of the editor */}
+      {!joined && (
+        <div className="join-modal-overlay">
+          <div className="join-modal-content">
+            <h1>Real-Time Code Editor</h1>
             <input
               type="text"
-              className="join-input"
-              placeholder="Room ID"
+              placeholder="Enter Room ID"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
             />
             <input
               type="text"
-              className="join-input"
-              placeholder="Your Name"
+              placeholder="Enter Your Name"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
             />
             <button className="btn btn-join" onClick={handleJoinRoom}>Join Room</button>
           </div>
-          <p className="join-page-info">Enter a Room ID and name to start collaborating.</p>
+        </div>
+      )}
+
+      {/* The Editor page is now part of the main return statement */}
+      <div className="editor-container">
+        <div className="sidebar">
+          <div className="room-info">
+            <h2>Room: {roomId || '...'}</h2>
+            <button onClick={handleCopyRoomId} className="btn btn-secondary">
+              {copySuccess || "Copy ID"}
+            </button>
+          </div>
+
+          <h3>Users ({clients.length})</h3>
+          <ul className="user-list">
+            {clients.map((client) => (
+              <li key={client.socketId} className="client-item">
+                <div className="avatar">
+                  {client.username ? client.username.charAt(0).toUpperCase() : '?'}
+                </div>
+                <span className="username">{client.username}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="sidebar-footer">
+            <div className="lock-manager">
+              <p className="lock-status">
+                Editor locked by: <strong>{lockHolder || 'None'}</strong>
+              </p>
+              <div className="lock-buttons">
+                <button className="btn btn-secondary" onClick={handleRequestLock} disabled={lockHolder}>Request Lock</button>
+                <button className="btn btn-secondary" onClick={handleReleaseLock} disabled={!amILockHolder}>Release Lock</button>
+              </div>
+            </div>
+
+            <select className="language-selector" value={language} onChange={handleLanguageChange}>
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+            </select>
+            <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>
+              Leave Room
+            </button>
+          </div>
+        </div>
+
+        <div className="editor-wrapper">
+          <Editor
+            height="55%"
+            language={language}
+            value={code}
+            onChange={handleCodeChange}
+            theme="vs-dark"
+            options={{
+              readOnly: isEditorLocked,
+              minimap: { enabled: false },
+              fontSize: 16,
+              wordWrap: 'on'
+            }}
+          />
+          <div className="io-wrapper">
+            <div className="input-area">
+              <h4>Input</h4>
+              <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..." />
+            </div>
+            <div className="output-area">
+              <h4>Output</h4>
+              <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..." />
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={handleRunCode}>
+            Execute Code
+          </button>
         </div>
       </div>
-    );
-  }
-
-  const amILockHolder = lockHolder === userName;
-
-  // The editor page JSX remains the same
-  return (
-    <div className="editor-container">
-        {/* ... This part is unchanged ... */}
-        {/* ... All sidebar and editor JSX ... */}
     </div>
   );
 }
