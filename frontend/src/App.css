@@ -67,17 +67,19 @@ body {
   background-color: #1e1e1e;
 }
 
+/* THIS IS THE MAIN LAYOUT FIX */
 .editor-container .sidebar {
   width: 260px;
   padding: 1.5rem;
   background-color: #2a2d34;
   color: #d4d4d4;
   border-right: 1px solid #3c3c3c;
-  display: flex;
-  flex-direction: column;
+  display: flex; /* This makes the sidebar a flex container */
+  flex-direction: column; /* Items will stack vertically */
 }
 
 .editor-container .sidebar .room-info {
+  flex-shrink: 0; /* Prevent this section from shrinking */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -94,37 +96,38 @@ body {
 }
 
 .editor-container .sidebar h3 {
+  flex-shrink: 0;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
   font-size: 1rem;
   color: #d4d4d4;
 }
 
+/* This makes the user list take up all available empty space */
 .editor-container .sidebar .user-list {
+  flex-grow: 1;
   list-style: none;
   padding: 0;
-  /* This allows the list to scroll if there are many users */
-  flex-grow: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* Adds a scrollbar if the list gets too long */
 }
 
-.editor-container .sidebar .typing-indicator {
+/* This new container will be pushed to the very bottom */
+.sidebar-footer {
+  margin-top: auto; /* THIS IS THE KEY: it pushes the footer down */
   padding-top: 1rem;
+  border-top: 1px solid #3c3c3c;
+  flex-shrink: 0; /* Prevent footer from shrinking */
+}
+
+.typing-indicator {
   font-size: 0.9rem;
   color: #8e8e8e;
   font-weight: bold;
-  height: 40px; /* Reserve space for the indicator */
-  flex-shrink: 0; /* Prevent it from shrinking */
+  height: 20px; /* Reserve a small space for it */
+  margin-bottom: 10px; /* Space between indicator and language selector */
 }
 
-/* *** NEW CONTAINER FOR FOOTER ELEMENTS *** */
-.sidebar-footer {
-  margin-top: auto; /* This is the key change to push it to the bottom */
-  padding-top: 1rem;
-  border-top: 1px solid #3c3c3c; /* Add a separator line */
-}
-
-.editor-container .sidebar .language-selector {
+.language-selector {
   width: 100%;
   padding: 0.5rem;
   background-color: #1e1e1e;
@@ -132,6 +135,12 @@ body {
   border: 1px solid #3c3c3c;
   border-radius: 6px;
 }
+
+.leave-btn {
+  margin-top: 1rem; /* This now correctly adds space above the button */
+  width: 100%;
+}
+
 
 .editor-container .editor-wrapper {
   flex-grow: 1;
@@ -214,10 +223,4 @@ body {
 .btn-secondary:hover {
   background-color: #3c3c3c;
   border-color: #8e8e8e;
-}
-
-/* --- Styling for the Leave Button within the footer --- */
-.leave-btn {
-  margin-top: 1rem; /* This now correctly adds space above the button */
-  width: 100%;
 }

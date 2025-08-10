@@ -151,14 +151,11 @@ function App() {
           ))}
         </ul>
 
-        <p className="typing-indicator">
-          {typingUser ? `${typingUser} is typing...` : "\u00A0"}
-        </p>
-        
-        {/* =================================================== */}
-        {/* THIS IS THE UPDATED SECTION FOR THE SIDEBAR FOOTER */}
-        {/* =================================================== */}
+        {/* The 'typing indicator' and 'sidebar footer' are now grouped at the bottom */}
         <div className="sidebar-footer">
+            <p className="typing-indicator">
+                {typingUser ? `${typingUser} is typing...` : "\u00A0"}
+            </p>
             <select className="language-selector" value={language} onChange={handleLanguageChange}>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
@@ -167,13 +164,10 @@ function App() {
                 <option value="go">Go</option>
                 <option value="rust">Rust</option>
             </select>
-
             <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>
                 Leave Room
             </button>
         </div>
-        {/* =================================================== */}
-
       </div>
 
       <div className="editor-wrapper">
