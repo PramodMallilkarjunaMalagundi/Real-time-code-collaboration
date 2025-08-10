@@ -30,7 +30,7 @@ const io = new Server(server, {
 // =================================================================
 
 const userSocketMap = {};
-// This object will store who has the temporary typing lock for each room.
+// This object will store who holds the edit lock for each room.
 const roomLocks = {}; 
 
 function getAllConnectedClients(roomId) {
@@ -58,7 +58,6 @@ io.on("connection", (socket) => {
       io.to(socketId).emit("joined", { clients, username, socketId: socket.id });
     });
 
-    // Send the current lock status to the new user
     const lockedBySocketId = roomLocks[roomId];
     const lockHolderUsername = lockedBySocketId ? userSocketMap[lockedBySocketId] : null;
     socket.emit('lock-status-update', {
@@ -68,17 +67,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("code-change", ({ roomId, code }) => {
-    // Only broadcast code changes. The lock is handled separately.
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // --- AUTOMATIC LOCK LOGIC ---
-
-  socket.on('start-typing', ({ roomId }) => {
-    // Grant lock only if the room is not already locked
+  // UPDATED: Logic for the automatic typing lock
+  socket.on('start-typing-lock', ({ roomId }) => {
     if (!roomLocks[roomId]) {
         roomLocks[roomId] = socket.id;
-        // Broadcast that this user has started typing and locked the editor
         io.to(roomId).emit('lock-status-update', {
             lockedBy: socket.id,
             username: userSocketMap[socket.id],
@@ -86,11 +81,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on('stop-typing', ({ roomId }) => {
-    // Release lock only if the requester is the current lock holder
+  // UPDATED: Logic for automatically releasing the lock
+  socket.on('stop-typing-lock', ({ roomId }) => {
     if (roomLocks[roomId] === socket.id) {
         delete roomLocks[roomId];
-        // Broadcast that the editor is now unlocked
         io.to(roomId).emit('lock-status-update', {
             lockedBy: null,
             username: null,
@@ -98,11 +92,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // --- AUTO-RELEASE LOCK ON DISCONNECT ---
+  // Auto-release lock on disconnect
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
-      // If the disconnecting user holds the lock, release it
       if (roomLocks[roomId] === socket.id) {
           delete roomLocks[roomId];
           socket.to(roomId).emit('lock-status-update', {
@@ -110,8 +103,6 @@ io.on("connection", (socket) => {
             username: null,
           });
       }
-
-      // Standard disconnect notification
       socket.to(roomId).emit("disconnected", {
         socketId: socket.id,
         username: userSocketMap[socket.id],
