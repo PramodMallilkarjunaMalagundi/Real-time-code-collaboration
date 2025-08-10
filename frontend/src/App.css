@@ -6,24 +6,23 @@
 
 body {
   font-family: "Roboto", "sans-serif";
-  /* We remove the body background as containers now handle it */
 }
 
 /* ================================================= */
-/* --- Styles for the NEW Join Modal --- */
+/* --- Styles for the Join Modal --- */
 /* ================================================= */
 
 .join-modal-overlay {
-  position: fixed; /* Sit on top of the content */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent background */
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; /* Ensure it's on top */
+  z-index: 1000;
 }
 
 .join-modal-content {
@@ -32,7 +31,8 @@ body {
   border-radius: 10px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
   text-align: center;
-  width: 380px;
+  width: 90%;
+  max-width: 400px; /* Max width for larger screens */
   border: 1px solid #3c3c3c;
   color: #d4d4d4;
 }
@@ -78,18 +78,9 @@ body {
   display: flex;
   height: 100vh;
   background-color: #1e1e1e;
-  /* When the modal is open, this container will be blurred */
-  transition: filter 0.3s ease-in-out;
 }
 
-/* This is a special class we'll apply when the modal is open */
-.editor-container.blurred {
-  filter: blur(5px) brightness(0.7);
-  pointer-events: none; /* Prevent interaction with the blurred background */
-}
-
-/* The rest of your existing CSS... */
-.editor-container .sidebar {
+.sidebar {
   width: 260px;
   padding: 1.5rem;
   background-color: #2a2d34;
@@ -99,7 +90,7 @@ body {
   flex-direction: column;
 }
 
-.editor-container .sidebar .room-info {
+.room-info {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -110,13 +101,13 @@ body {
   padding-bottom: 1rem;
 }
 
-.editor-container .sidebar .room-info h2 {
+.room-info h2 {
   margin-bottom: 1rem;
   font-size: 1.2rem;
   color: #ffffff;
 }
 
-.editor-container .sidebar h3 {
+.sidebar h3 {
   flex-shrink: 0;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
@@ -124,11 +115,32 @@ body {
   color: #d4d4d4;
 }
 
-.editor-container .sidebar .user-list {
+.user-list {
   flex-grow: 1;
   list-style: none;
   padding: 0;
   overflow-y: auto;
+}
+
+.client-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #007acc;
+  color: white;
+  margin-right: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .sidebar-footer {
@@ -138,29 +150,41 @@ body {
   flex-shrink: 0;
 }
 
-.typing-indicator {
+/* Styles for the Lock Manager */
+.lock-manager {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  border: 1px solid #3c3c3c;
+}
+
+.lock-status {
   font-size: 0.9rem;
-  color: #8e8e8e;
-  font-weight: bold;
-  height: 20px;
-  margin-bottom: 10px;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.lock-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lock-buttons .btn {
+  flex: 1;
 }
 
 .language-selector {
   width: 100%;
   padding: 0.5rem;
+  margin-bottom: 1rem;
   background-color: #1e1e1e;
   color: #d4d4d4;
   border: 1px solid #3c3c3c;
   border-radius: 6px;
 }
 
-.leave-btn {
-  margin-top: 1rem;
-  width: 100%;
-}
-
-.editor-container .editor-wrapper {
+.editor-wrapper {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -193,50 +217,37 @@ body {
   resize: none;
 }
 
-.client-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #007acc;
-  color: white;
-  margin-right: 10px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-}
-
+/* General Button Styles */
 .btn {
-  padding: 10px 20px;
-  font-size: 1rem;
+  padding: 10px 15px;
+  font-size: 0.9rem;
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.2s ease-in-out;
 }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background-color: #ff9800;
   color: #1e1e1e;
 }
-.btn-primary:hover {
+
+.btn-primary:hover:not(:disabled) {
   background-color: #e68900;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
 .btn-secondary {
   background-color: transparent;
   color: #d4d4d4;
   border-color: #3c3c3c;
 }
-.btn-secondary:hover {
+
+.btn-secondary:hover:not(:disabled) {
   background-color: #3c3c3c;
-  border-color: #8e8e8e;
 }
