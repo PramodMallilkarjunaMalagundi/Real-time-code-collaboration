@@ -6,78 +6,92 @@
 
 body {
   font-family: "Roboto", "sans-serif";
+  background-color: #1e1e1e; /* Set a default dark background */
 }
 
 /* ================================================= */
-/* --- Styles for the Join Modal --- */
+/* --- Styles for the Original Join Page --- */
 /* ================================================= */
 
-.join-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+.join-page-wrapper {
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-}
-
-.join-modal-content {
-  background-color: #2a2d34;
-  padding: 2rem 2.5rem;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-  text-align: center;
-  width: 90%;
-  max-width: 400px; /* Max width for larger screens */
-  border: 1px solid #3c3c3c;
   color: #d4d4d4;
+  text-align: center;
 }
 
-.join-modal-content h1 {
-  margin-bottom: 1.5rem;
+.join-form-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.join-page-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
   color: #ffffff;
 }
 
-.join-modal-content input {
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
+.join-input-group {
+  display: flex;
   border: 1px solid #3c3c3c;
-  border-radius: 6px;
+  border-radius: 8px;
+  overflow: hidden; /* This is key to making the inputs look like one group */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.join-input {
+  background-color: #2a2d34;
+  border: none;
+  padding: 0.8rem 1rem;
   font-size: 1rem;
+  color: #d4d4d4;
+  border-right: 1px solid #3c3c3c; /* Separator line */
+}
+
+.join-input:last-of-type {
+  border-right: none;
+}
+
+.join-input:focus {
+  outline: none;
+  background-color: #31353f;
 }
 
 .btn-join {
-  width: 100%;
-  padding: 0.75rem;
   background-color: #007acc;
-  color: #fff;
-  border: none !important;
-  border-radius: 6px;
-  font-size: 1.1rem;
+  color: white;
+  border: none;
+  font-size: 1rem;
   font-weight: bold;
+  padding: 0 1.5rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
 .btn-join:hover {
   background-color: #005f9e;
 }
 
+.join-page-info {
+  margin-top: 1rem;
+  color: #8e8e8e;
+}
+
+
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
 /* ================================================= */
 
+/* All the existing styles for .editor-container, .sidebar, etc., remain here */
+/* ... (The CSS from the previous step for the editor page is still correct) ... */
+
 .editor-container {
   display: flex;
   height: 100vh;
-  background-color: #1e1e1e;
 }
 
 .sidebar {
@@ -150,7 +164,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Styles for the Lock Manager */
 .lock-manager {
   margin-bottom: 1rem;
   padding: 0.75rem;
@@ -217,7 +230,6 @@ body {
   resize: none;
 }
 
-/* General Button Styles */
 .btn {
   padding: 10px 15px;
   font-size: 0.9rem;
