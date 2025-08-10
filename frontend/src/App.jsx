@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import "./App.css";
+import "./App.css"; // <--- ADD THIS LINE BACK
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
+
+// ... the rest of your App.jsx code
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
