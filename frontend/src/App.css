@@ -240,18 +240,3 @@ body {
   background-color: #3c3c3c;
   border-color: #8e8e8e;
 }
-/* --- Style for Create New Room Link --- */
-.create-room-info {
-  margin-top: 1rem;
-}
-.create-new-btn {
-  color: #007acc;
-  text-decoration: none;
-  font-weight: bold;
-  cursor: pointer;
-  border-bottom: 1px solid #007acc;
-}
-.create-new-btn:hover {
-  color: #005f9e;
-  border-bottom-color: #005f9e;
-}
