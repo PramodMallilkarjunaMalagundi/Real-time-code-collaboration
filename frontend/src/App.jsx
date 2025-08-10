@@ -95,7 +95,7 @@ function App() {
 
   // --- RENDER LOGIC ---
   if (!joined) {
-    return ( /* ... Join form JSX remains the same ... */ );
+    return ;
   }
 
   return (
