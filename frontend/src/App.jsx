@@ -3,16 +3,12 @@ import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
-// --- Configuration ---
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-
 function App() {
-  // --- STATE MANAGEMENT ---
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
-
   const [clients, setClients] = useState([]); 
   const [typingUser, setTypingUser] = useState("");
   const [language, setLanguage] = useState("javascript");
@@ -21,24 +17,20 @@ function App() {
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
 
-  // --- REFS ---
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-
-  // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
     if (!joined) return;
 
     socketRef.current = io(SERVER_URL);
     const socket = socketRef.current;
 
-    socket.emit("join", { roomId, userName });
+    // *** FINAL FIX HERE ***
+    // Send the `userName` state value under the key `username` (lowercase n)
+    socket.emit("join", { roomId, username: userName });
 
-    // --- EVENT LISTENERS with DEBUGGING ---
     socket.on("joined", ({ clients: serverClients, username, socketId }) => {
-      // DEBUG: Log the exact data received from the server
-      console.log(`'joined' event received. User: ${username}. Full client list:`, serverClients);
       setClients(serverClients); 
     });
 
@@ -47,8 +39,6 @@ function App() {
     });
 
     socket.on("typing", ({ username }) => {
-      // DEBUG: Log when a typing event is received from another user
-      console.log(`Received 'typing' event from ${username}`);
       setTypingUser(username);
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -59,7 +49,6 @@ function App() {
     });
     
     socket.on("disconnected", ({ socketId, username }) => {
-      console.log(`${username} left the room.`);
       setClients((prevClients) => {
         return prevClients.filter((client) => client.socketId !== socketId);
       });
@@ -73,8 +62,6 @@ function App() {
       setOutput(response.run.output || response.run.stderr || "No output.");
     });
 
-
-    // --- CLEANUP LOGIC ---
     return () => {
       socket.disconnect();
       socket.off('joined');
@@ -85,8 +72,6 @@ function App() {
     };
   }, [joined, roomId, userName]);
 
-
-  // --- EVENT HANDLERS ---
   const handleJoinRoom = () => {
     if (roomId.trim() && userName.trim()) {
       setJoined(true);
@@ -114,10 +99,10 @@ function App() {
     setCode(newCode);
     if (socketRef.current) {
       socketRef.current.emit("code-change", { roomId, code: newCode });
-      
-      // DEBUG: Log when this client sends a typing event
-      console.log(`Sending 'typing' event as ${userName}...`);
-      socketRef.current.emit("typing", { roomId, userName });
+
+      // *** FINAL FIX HERE ***
+      // Send the `userName` state value under the key `username` (lowercase n)
+      socketRef.current.emit("typing", { roomId, username: userName });
     }
   };
 
@@ -136,8 +121,6 @@ function App() {
     }
   };
 
-
-  // --- RENDER LOGIC ---
   if (!joined) {
     return (
       <div className="join-container">
@@ -163,7 +146,6 @@ function App() {
         <h3>Users ({clients.length})</h3>
         <ul className="user-list">
           {clients.map((client) => (
-            // This key needs to be unique. socketId is perfect for this.
             <li key={client.socketId}>{client.username}</li>
           ))}
         </ul>
@@ -175,7 +157,6 @@ function App() {
         </select>
         <button className="leave-button" onClick={handleLeaveRoom}> Leave Room </button>
       </div>
-
       <div className="editor-wrapper">
         <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}/>
         <div className="io-wrapper"><div className="input-area"><h4>Input </h4><textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/></div><div className="output-area"><h4>Output</h4><textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/></div></div>
