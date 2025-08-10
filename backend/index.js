@@ -30,9 +30,8 @@ const io = new Server(server, {
 // =================================================================
 
 const userSocketMap = {};
-// ADDED: This object will store who holds the edit lock for each room.
-// Format: { roomId: socketId }
-const roomLocks = {}; 
+// ADDED: Store the current language for each room
+const roomState = {}; // Format: { roomId: { language: 'javascript' } }
 
 function getAllConnectedClients(roomId) {
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
@@ -53,6 +52,11 @@ io.on("connection", (socket) => {
     userSocketMap[socket.id] = username;
     socket.join(roomId);
 
+    // If room has no state, initialize it with default language
+    if (!roomState[roomId]) {
+      roomState[roomId] = { language: 'javascript' };
+    }
+
     const clients = getAllConnectedClients(roomId);
     
     // Notify all clients about the new user
@@ -60,61 +64,31 @@ io.on("connection", (socket) => {
       io.to(socketId).emit("joined", { clients, username, socketId: socket.id });
     });
 
-    // ADDED: When a new user joins, immediately tell them the current lock status
-    const lockedBySocketId = roomLocks[roomId];
-    const lockHolderUsername = lockedBySocketId ? userSocketMap[lockedBySocketId] : null;
-    socket.emit('lock-status-update', {
-        lockedBy: lockedBySocketId,
-        username: lockHolderUsername,
-    });
+    // Send the current room's language to the new user
+    socket.emit('language-change', { language: roomState[roomId].language });
   });
 
-  // 'CODE_CHANGE' is now only sent by the lock holder, so we just broadcast it.
   socket.on("code-change", ({ roomId, code }) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // ADDED: Logic for requesting the edit lock
-  socket.on('request-edit-lock', ({ roomId }) => {
-    // Grant lock only if the room is not already locked
-    if (!roomLocks[roomId]) {
-        roomLocks[roomId] = socket.id;
-        // Broadcast the new lock status to everyone in the room
-        io.to(roomId).emit('lock-status-update', {
-            lockedBy: socket.id,
-            username: userSocketMap[socket.id],
-        });
+  // ADDED: Handle language synchronization
+  socket.on('language-change', ({ roomId, language }) => {
+    if (roomState[roomId]) {
+        roomState[roomId].language = language;
     }
+    // Broadcast the language change to everyone in the room
+    io.to(roomId).emit('language-change', { language });
   });
 
-  // ADDED: Logic for releasing the edit lock
-  socket.on('release-edit-lock', ({ roomId }) => {
-    // Release lock only if the requester is the current lock holder
-    if (roomLocks[roomId] === socket.id) {
-        delete roomLocks[roomId];
-        // Broadcast the new (unlocked) status to everyone
-        io.to(roomId).emit('lock-status-update', {
-            lockedBy: null,
-            username: null,
-        });
-    }
+  // ADDED: Handle typing indicator
+  socket.on('typing', ({ roomId, username }) => {
+    socket.to(roomId).emit('typing', { username });
   });
 
-
-  // CRITICAL UPDATE: Auto-release lock on disconnect
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
-      // If the disconnecting user holds the lock, release it
-      if (roomLocks[roomId] === socket.id) {
-          delete roomLocks[roomId];
-          // Broadcast the unlocked status to the remaining users
-          socket.to(roomId).emit('lock-status-update', {
-            lockedBy: null,
-            username: null,
-          });
-      }
-
       // Standard disconnect notification
       socket.to(roomId).emit("disconnected", {
         socketId: socket.id,

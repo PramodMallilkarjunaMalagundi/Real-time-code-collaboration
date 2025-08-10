@@ -17,13 +17,12 @@ function App() {
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
 
-  // State for editor lock mechanism
-  const [isEditorLocked, setIsEditorLocked] = useState(false);
-  const [lockHolder, setLockHolder] = useState(null);
-  const [mySocketId, setMySocketId] = useState(null);
-
+  // ADDED: State for typing indicator
+  const [typingUser, setTypingUser] = useState("");
+  
   // --- REFS ---
   const socketRef = useRef(null);
+  const typingTimeoutRef = useRef(null); // Ref to manage the typing timeout
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -31,10 +30,6 @@ function App() {
 
     const socket = io(SERVER_URL);
     socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setMySocketId(socket.id);
-    });
 
     socket.emit("join", { roomId, username: userName });
 
@@ -46,10 +41,23 @@ function App() {
       setCode(newCode);
     });
 
-    socket.on('lock-status-update', ({ lockedBy, username }) => {
-      setLockHolder(username);
-      const amILockHolder = lockedBy === socket.id;
-      setIsEditorLocked(lockedBy !== null && !amILockHolder);
+    // ADDED: Listener for typing indicator
+    socket.on('typing', ({ username }) => {
+      // Don't show typing indicator for myself
+      if (username !== userName) {
+        setTypingUser(username);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+          setTypingUser("");
+        }, 2000); // Hide indicator after 2 seconds of inactivity
+      }
+    });
+
+    // ADDED: Listener for language synchronization
+    socket.on('language-change', ({ language: newLanguage }) => {
+      setLanguage(newLanguage);
     });
 
     socket.on("disconnected", ({ socketId }) => {
@@ -70,7 +78,6 @@ function App() {
     setJoined(false);
     setRoomId(""); setUserName(""); setClients([]);
     setCode("// Start coding here...");
-    setLockHolder(null); setIsEditorLocked(false);
   };
   
   const handleCopyRoomId = () => {
@@ -81,64 +88,47 @@ function App() {
 
   const handleCodeChange = (newCode) => {
     setCode(newCode);
-    if (socketRef.current && !isEditorLocked) {
+    if (socketRef.current) {
       socketRef.current.emit("code-change", { roomId, code: newCode });
+      // Emit typing event on code change
+      socketRef.current.emit("typing", { roomId, username: userName });
     }
   };
 
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
+    // We update the state locally immediately for a responsive feel,
+    // but the server will send back the authoritative state.
     setLanguage(newLanguage);
     if (socketRef.current) {
-        socketRef.current.emit("languageChange", { roomId, language: newLanguage });
+      // Tell the server about the language change so it can broadcast
+      socketRef.current.emit("language-change", { roomId, language: newLanguage });
     }
   };
 
   const handleRunCode = () => { /* ... */ };
 
-  const handleRequestLock = () => {
-    if (socketRef.current) socketRef.current.emit('request-edit-lock', { roomId });
-  };
-  const handleReleaseLock = () => {
-    if (socketRef.current) socketRef.current.emit('release-edit-lock', { roomId });
-  };
-
-  const amILockHolder = lockHolder === userName;
 
   // --- RENDER LOGIC ---
-  return (
-    // The main container includes a dynamic 'blurred' class
-    <div className={`app-container ${!joined ? 'blurred' : ''}`}>
-      
-      {/* The Join Modal is conditionally rendered ON TOP of the editor */}
-      {!joined && (
-        <div className="join-modal-overlay">
-          <div className="join-modal-content">
-            <h1>Real-Time Code Editor</h1>
-            <input
-              type="text"
-              placeholder="Enter Room ID"
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
-            />
-            <input
-              type="text"
-              placeholder="Enter Your Name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}
-            />
-            <button className="btn btn-join" onClick={handleJoinRoom}>Join Room</button>
-          </div>
+  if (!joined) {
+    return (
+      <div className="join-modal-overlay">
+        <div className="join-modal-content">
+          <h1>Real-Time Code Editor</h1>
+          <input type="text" placeholder="Enter Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+          <input type="text" placeholder="Enter Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+          <button className="btn btn-join" onClick={handleJoinRoom}>Join Room</button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* The Editor page is now part of the main return statement */}
+  return (
+    <div className="app-container">
       <div className="editor-container">
         <div className="sidebar">
           <div className="room-info">
-            <h2>Room: {roomId || '...'}</h2>
+            <h2>Room: {roomId}</h2>
             <button onClick={handleCopyRoomId} className="btn btn-secondary">
               {copySuccess || "Copy ID"}
             </button>
@@ -157,16 +147,10 @@ function App() {
           </ul>
 
           <div className="sidebar-footer">
-            <div className="lock-manager">
-              <p className="lock-status">
-                Editor locked by: <strong>{lockHolder || 'None'}</strong>
-              </p>
-              <div className="lock-buttons">
-                <button className="btn btn-secondary" onClick={handleRequestLock} disabled={lockHolder}>Request Lock</button>
-                <button className="btn btn-secondary" onClick={handleReleaseLock} disabled={!amILockHolder}>Release Lock</button>
-              </div>
-            </div>
-
+             {/* Typing Indicator UI */}
+            <p className="typing-indicator">
+              {typingUser ? `${typingUser} is typing...` : "\u00A0"}
+            </p>
             <select className="language-selector" value={language} onChange={handleLanguageChange}>
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -186,12 +170,7 @@ function App() {
             value={code}
             onChange={handleCodeChange}
             theme="vs-dark"
-            options={{
-              readOnly: isEditorLocked,
-              minimap: { enabled: false },
-              fontSize: 16,
-              wordWrap: 'on'
-            }}
+            options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}
           />
           <div className="io-wrapper">
             <div className="input-area">
