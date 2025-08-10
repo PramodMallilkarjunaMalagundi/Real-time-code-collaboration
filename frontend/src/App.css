@@ -16,151 +16,156 @@ body {
   align-items: center;
   height: 100vh;
   background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-
-  .join-form {
-    background-color: #f5f5f5;
-    color: #000;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 320px;
-
-    h1 {
-      margin-bottom: 1.5rem;
-      color: #444;
-    }
-
-    input {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      background-color: #000;
-      color: #fff;
-      border: none !important;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-
-      &:hover {
-        background-color: #4a00e0;
-      }
-    }
-  }
 }
+
+.join-container .join-form {
+  background-color: #f5f5f5;
+  color: #000;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 320px;
+}
+
+.join-container .join-form h1 {
+  margin-bottom: 1.5rem;
+  color: #444;
+}
+
+.join-container .join-form input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.join-container .join-form button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #000;
+  color: #fff;
+  border: none !important;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.join-container .join-form button:hover {
+  background-color: #4a00e0;
+}
+
 
 .editor-container {
   display: flex;
   height: 100vh;
-
-  .sidebar {
-    width: 260px;
-    padding: 1.5rem;
-    background-color: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-    color: #333;
-    border-right: 2px solid #d1e3f3;
-
-    .room-info {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 1rem;
-
-      h2 {
-        margin-bottom: 1rem;
-        font-size: 1.2rem;
-        color: #333;
-      }
-
-      .copy-button {
-        padding: 0.5rem 1rem;
-        background-color: #a1c4fd;
-        color: #000;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-
-        &:hover {
-          background-color: #ff6f61;
-        }
-      }
-
-      .copy-success {
-        margin-left: 0.5rem;
-        color: rgb(38, 167, 38);
-        font-size: 0.8rem;
-      }
-    }
-
-    h3 {
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 1rem;
-      color: #333;
-    }
-    ul {
-      list-style: none;
-      li {
-        padding: 0.5rem;
-        font-size: 0.9rem;
-        background: #a1c4fd;
-        margin-top: 5px;
-        border-radius: 5px;
-        color: #000;
-      }
-    }
-
-    .typing-indicator {
-      margin-top: 1rem;
-      font-size: 1rem;
-      color: #333;
-    }
-
-    .language-selector {
-      margin-top: 1rem;
-      width: 100%;
-      padding: 0.5rem;
-      background-color: #a1c4fd;
-      color: #000;
-      border: none;
-      border-radius: 6px;
-    }
-
-    .leave-button {
-      margin-top: 1rem;
-      width: 100%;
-      padding: 0.75rem;
-      background-color: #764ba2;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-
-      &:hover {
-        background-color: #3e275a;
-      }
-    }
-  }
-
-  .editor-wrapper {
-    flex-grow: 1;
-    background-color: #ffffff;
-  }
 }
+
+.editor-container .sidebar {
+  width: 260px;
+  padding: 1.5rem;
+  background-color: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+  color: #333;
+  border-right: 2px solid #d1e3f3;
+}
+
+.editor-container .sidebar .room-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.editor-container .sidebar .room-info h2 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.editor-container .sidebar .room-info .copy-button {
+  padding: 0.5rem 1rem;
+  background-color: #a1c4fd;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.editor-container .sidebar .room-info .copy-button:hover {
+  background-color: #ff6f61;
+}
+
+.editor-container .sidebar .room-info .copy-success {
+  margin-left: 0.5rem;
+  color: rgb(38, 167, 38);
+  font-size: 0.8rem;
+}
+
+.editor-container .sidebar h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+}
+.editor-container .sidebar ul {
+  list-style: none;
+}
+
+.editor-container .sidebar ul li {
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  background: #a1c4fd;
+  margin-top: 5px;
+  border-radius: 5px;
+  color: #000;
+  font-weight: bold; /* <-- THIS LINE WAS ADDED */
+}
+
+.editor-container .sidebar .typing-indicator {
+  margin-top: 1rem;
+  font-size: 1rem;
+  color: #333;
+  font-weight: bold; /* <-- THIS LINE WAS ADDED */
+}
+
+.editor-container .sidebar .language-selector {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #a1c4fd;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+}
+
+.editor-container .sidebar .leave-button {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #764ba2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.editor-container .sidebar .leave-button:hover {
+  background-color: #3e275a;
+}
+
+.editor-container .editor-wrapper {
+  flex-grow: 1;
+  background-color: #ffffff;
+}
+
 
 .run-btn {
   background-color: #ff9800;
@@ -172,14 +177,14 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  
-
-  &:hover {
-    background-color: #e68900;
-    transform: scale(1.05);
-    box-shadow: 0 6px 8px rgba(255, 136, 0, 0.4);
-  }
 }
+
+.run-btn:hover {
+  background-color: #e68900;
+  transform: scale(1.05);
+  box-shadow: 0 6px 8px rgba(255, 136, 0, 0.4);
+}
+
 
 .output-console {
   width: 100%;
