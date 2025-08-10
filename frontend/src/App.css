@@ -150,17 +150,16 @@ body {
   flex-shrink: 0;
 }
 
-/* UPDATED: Styles for the relocated typing indicator */
 .typing-indicator {
   font-size: 0.9rem;
   font-style: italic;
   font-weight: bold;
   color: #a0a0a0;
   height: 20px;
-  margin-top: auto; /* Pushes it down towards the footer */
+  margin-top: auto;
   margin-bottom: 1rem;
-  padding-top: 1rem; /* Space above it */
-  border-top: 1px solid #3c3c3c; /* The dividing line is now here */
+  padding-top: 1rem;
+  border-top: 1px solid #3c3c3c;
 }
 
 .sidebar-footer {
@@ -175,6 +174,11 @@ body {
   color: #d4d4d4;
   border: 1px solid #3c3c3c;
   border-radius: 6px;
+}
+
+/* --- THE ONLY CHANGE IS HERE --- */
+.leave-btn {
+  width: 100%; /* This makes the button full-width */
 }
 
 .editor-wrapper {
