@@ -11,13 +11,12 @@ function App() {
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
   const [clients, setClients] = useState([]); 
-  const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("// Start coding here...");
-
+  
   // State for the automatic typing lock
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null); // Username of the person typing
-  const [mySocketId, setMySocketId] = useState(null);
+  const [mySocketId, setMySocketId] = useState(null); // Reliably stores our own socket ID
 
   // --- REFS ---
   const socketRef = useRef(null);
@@ -25,22 +24,34 @@ function App() {
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
+    // This effect should only run when the user has actively joined a room.
     if (!joined) return;
 
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
+    // Set our own socket ID into state as soon as we connect. This is reliable.
     socket.on('connect', () => {
       setMySocketId(socket.id);
     });
 
+    // Send the join event to the server.
     socket.emit("join", { roomId, username: userName });
 
-    socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
-    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
+    // --- SETUP ALL EVENT LISTENERS ---
 
+    socket.on("joined", ({ clients: serverClients }) => {
+      setClients(serverClients); 
+    });
+
+    socket.on("code-change", ({ code: newCode }) => {
+      setCode(newCode);
+    });
+    
+    // Listen for lock status updates from the server.
     socket.on('lock-status-update', ({ lockedBy, username }) => {
         setLockHolder(username);
+        // The check now correctly uses the state variable for our ID.
         setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
     });
 
@@ -48,77 +59,109 @@ function App() {
       setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
     });
 
+    // --- CLEANUP LOGIC ---
+    // This function runs when the component unmounts or `joined` becomes false.
     return () => {
-      socket.disconnect();
-      socket.off();
+      if (socket) {
+        socket.disconnect();
+      }
+      if (stopTypingTimeoutRef.current) {
+          clearTimeout(stopTypingTimeoutRef.current);
+      }
     };
   }, [joined, roomId, userName]);
 
 
   // --- EVENT HANDLERS ---
-  const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
+  const handleJoinRoom = () => {
+    if (roomId.trim() && userName.trim()) {
+      setJoined(true);
+    }
+  };
   
   const handleLeaveRoom = () => {
-    // Before leaving, if this user holds the lock, release it
+    // If we hold the lock, make sure to release it before leaving.
     if (lockHolder === userName && socketRef.current) {
         socketRef.current.emit('stop-typing-lock', { roomId });
     }
     setJoined(false);
-    // ... reset other state ...
+    // Reset all relevant state for the next session
+    setRoomId("");
+    setUserName("");
+    setClients([]);
+    setCode("// Start coding here...");
+    setLockHolder(null);
+    setIsEditorLocked(false);
+    setMySocketId(null);
   };
   
   const handleCodeChange = (newCode) => {
-    // You can always update your own local code state
+    // Always update our local editor's state.
     setCode(newCode);
 
-    // But only send socket events if you have permission
+    // Only send events if we are allowed to edit.
     if (!isEditorLocked && socketRef.current) {
-        // If this is the first character typed (i.e., we don't have the lock yet)
-        // immediately request it.
+        // If the editor is unlocked, our first keypress should claim the lock.
         if (!lockHolder) {
             socketRef.current.emit('start-typing-lock', { roomId });
         }
         
-        // Send the code change
+        // Send the actual code change.
         socketRef.current.emit("code-change", { roomId, code: newCode });
 
-        // Set up a timer to automatically release the lock when typing stops
+        // Reset the timer to auto-release the lock.
         if (stopTypingTimeoutRef.current) {
             clearTimeout(stopTypingTimeoutRef.current);
         }
         stopTypingTimeoutRef.current = setTimeout(() => {
-            socketRef.current.emit('stop-typing-lock', { roomId });
-        }, 2000); // Release lock after 2 seconds of inactivity
+            // Check if this client still holds the lock before releasing.
+            if (socketRef.current) {
+              socketRef.current.emit('stop-typing-lock', { roomId });
+            }
+        }, 2000); // Release lock after 2 seconds of inactivity.
     }
   };
 
-
   // --- RENDER LOGIC ---
   if (!joined) {
-    return ;
+    return (
+      <div className="join-container">
+        <div className="join-form">
+          <h1>Real-Time Code Editor</h1>
+          <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <button onClick={handleJoinRoom}>Join Room</button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="editor-container">
       <div className="sidebar">
-        {/* ... Room info, users list, language selector, etc. ... */}
+        {/* ... Other sidebar elements ... */}
+        <h3>Users ({clients.length})</h3>
+        <ul className="user-list">
+          {clients.map((client) => (
+            <li key={client.socketId}>{client.username}</li>
+          ))}
+        </ul>
         
-        {/* UPDATED: Simplified UI for lock status */}
         <div className="lock-manager">
           <p className="lock-status">
             Editor locked by: <strong>{lockHolder || 'None'}</strong>
           </p>
           {!isEditorLocked && lockHolder === userName && (
-             <p className="lock-hint">(You have the lock)</p>
+             <p className="lock-hint">(You have edit control)</p>
           )}
         </div>
-
-        {/* ... The rest of the sidebar ... */}
+        
+        <button className="leave-button" onClick={handleLeaveRoom}>Leave Room</button>
       </div>
 
       <div className="editor-wrapper">
         <Editor
-          height="70%" // Increased height slightly
+          height="70%"
           language={language}
           value={code}
           onChange={handleCodeChange}
@@ -130,7 +173,7 @@ function App() {
               wordWrap: 'on' 
           }}
         />
-        {/* ... IO wrapper and Execute button ... */}
+        {/* ... IO wrapper and other elements ... */}
       </div>
     </div>
   );
