@@ -6,80 +6,101 @@
 
 body {
   font-family: "Roboto", "sans-serif";
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  color: #000;
+  /* We remove the body background as containers now handle it */
 }
 
 /* ================================================= */
-/* --- Styles for the LIGHT Join Page --- */
+/* --- Styles for the NEW Join Modal --- */
 /* ================================================= */
-.join-container {
+
+.join-modal-overlay {
+  position: fixed; /* Sit on top of the content */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent background */
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+  z-index: 1000; /* Ensure it's on top */
 }
-.join-container .join-form {
-  background-color: #f5f5f5;
-  color: #000;
-  padding: 2rem;
+
+.join-modal-content {
+  background-color: #2a2d34;
+  padding: 2rem 2.5rem;
   border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
   text-align: center;
-  width: 320px;
+  width: 380px;
+  border: 1px solid #3c3c3c;
+  color: #d4d4d4;
 }
-.join-container .join-form h1 {
+
+.join-modal-content h1 {
   margin-bottom: 1.5rem;
-  color: #444;
+  color: #ffffff;
 }
-.join-container .join-form input {
-  background-color: #fff;
-  color: #000;
+
+.join-modal-content input {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
   width: 100%;
   padding: 0.75rem;
   margin-bottom: 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid #3c3c3c;
   border-radius: 6px;
   font-size: 1rem;
 }
-.join-container .join-form button {
+
+.btn-join {
   width: 100%;
   padding: 0.75rem;
-  background-color: #000;
+  background-color: #007acc;
   color: #fff;
   border: none !important;
   border-radius: 6px;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-.join-container .join-form button:hover {
-  background-color: #4a00e0;
+
+.btn-join:hover {
+  background-color: #005f9e;
 }
 
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
 /* ================================================= */
+
 .editor-container {
   display: flex;
   height: 100vh;
   background-color: #1e1e1e;
+  /* When the modal is open, this container will be blurred */
+  transition: filter 0.3s ease-in-out;
 }
 
-/* THIS IS THE MAIN LAYOUT FIX */
+/* This is a special class we'll apply when the modal is open */
+.editor-container.blurred {
+  filter: blur(5px) brightness(0.7);
+  pointer-events: none; /* Prevent interaction with the blurred background */
+}
+
+/* The rest of your existing CSS... */
 .editor-container .sidebar {
   width: 260px;
   padding: 1.5rem;
   background-color: #2a2d34;
   color: #d4d4d4;
   border-right: 1px solid #3c3c3c;
-  display: flex; /* This makes the sidebar a flex container */
-  flex-direction: column; /* Items will stack vertically */
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-container .sidebar .room-info {
-  flex-shrink: 0; /* Prevent this section from shrinking */
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -103,28 +124,26 @@ body {
   color: #d4d4d4;
 }
 
-/* This makes the user list take up all available empty space */
 .editor-container .sidebar .user-list {
   flex-grow: 1;
   list-style: none;
   padding: 0;
-  overflow-y: auto; /* Adds a scrollbar if the list gets too long */
+  overflow-y: auto;
 }
 
-/* This new container will be pushed to the very bottom */
 .sidebar-footer {
-  margin-top: auto; /* THIS IS THE KEY: it pushes the footer down */
+  margin-top: auto;
   padding-top: 1rem;
   border-top: 1px solid #3c3c3c;
-  flex-shrink: 0; /* Prevent footer from shrinking */
+  flex-shrink: 0;
 }
 
 .typing-indicator {
   font-size: 0.9rem;
   color: #8e8e8e;
   font-weight: bold;
-  height: 20px; /* Reserve a small space for it */
-  margin-bottom: 10px; /* Space between indicator and language selector */
+  height: 20px;
+  margin-bottom: 10px;
 }
 
 .language-selector {
@@ -137,10 +156,9 @@ body {
 }
 
 .leave-btn {
-  margin-top: 1rem; /* This now correctly adds space above the button */
+  margin-top: 1rem;
   width: 100%;
 }
-
 
 .editor-container .editor-wrapper {
   flex-grow: 1;
@@ -175,7 +193,6 @@ body {
   resize: none;
 }
 
-/* --- Styles for User Avatars --- */
 .client-item {
   display: flex;
   align-items: center;
@@ -196,7 +213,6 @@ body {
   flex-shrink: 0;
 }
 
-/* --- Unified Button Styles for Dark Theme --- */
 .btn {
   padding: 10px 20px;
   font-size: 1rem;
