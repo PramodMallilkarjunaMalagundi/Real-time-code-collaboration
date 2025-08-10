@@ -9,7 +9,7 @@ function App() {
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
-  const [clients, setClients] = useState([]); 
+  const [clients, setClients] = useState([]);
   const [typingUser, setTypingUser] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("// Start coding here...");
@@ -29,7 +29,7 @@ function App() {
     socket.emit("join", { roomId, username: userName });
 
     socket.on("joined", ({ clients: serverClients, username, socketId }) => {
-      setClients(serverClients); 
+      setClients(serverClients);
     });
 
     socket.on("code-change", ({ code: newCode }) => {
@@ -43,9 +43,9 @@ function App() {
       }
       typingTimeoutRef.current = setTimeout(() => {
         setTypingUser("");
-      }, 2000); 
+      }, 2000);
     });
-    
+
     socket.on("disconnected", ({ socketId, username }) => {
       setClients((prevClients) => {
         return prevClients.filter((client) => client.socketId !== socketId);
@@ -123,8 +123,8 @@ function App() {
       <div className="join-container">
         <div className="join-form">
           <h1>Real-Time Code Editor</h1>
-          <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
-          <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+          <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
           <button onClick={handleJoinRoom}>Join Room</button>
         </div>
       </div>
@@ -141,7 +141,7 @@ function App() {
             {copySuccess || "Copy ID"}
           </button>
         </div>
-        
+
         <h3>Users ({clients.length})</h3>
         {/* UPDATED: Use new user list structure with Avatars */}
         <ul className="user-list">
@@ -162,23 +162,23 @@ function App() {
         <select className="language-selector" value={language} onChange={handleLanguageChange}>
           <option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option><option value="cpp">C++</option><option value="go">Go</option><option value="rust">Rust</option>
         </select>
-        
+
         {/* UPDATED: Apply new button classes */}
-        <button className="btn btn-secondary" onClick={handleLeaveRoom}>
+        <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>
           Leave Room
         </button>
       </div>
 
       <div className="editor-wrapper">
-        <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}/>
+        <Editor height="55%" language={language} value={code} onChange={handleCodeChange} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }} />
         <div className="io-wrapper">
           <div className="input-area">
             <h4>Input </h4>
-            <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/>
+            <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..." />
           </div>
           <div className="output-area">
             <h4>Output</h4>
-            <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/>
+            <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..." />
           </div>
         </div>
         {/* UPDATED: Apply new button classes */}
