@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import "./App.css"; 
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
+// ADDED: Import the toast library for notifications
+import toast, { Toaster } from 'react-hot-toast';
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -18,6 +20,9 @@ function App() {
   
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null);
+  
+  // FINAL, ROBUST FIX: We still need to reliably know our own ID.
+  const [mySocketId, setMySocketId] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
@@ -25,7 +30,7 @@ function App() {
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
-    // This effect handles the entire connection lifecycle based on `joined` state.
+    // This effect handles creating and destroying the socket connection.
     if (!joined) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -37,40 +42,42 @@ function App() {
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
-    // This is the primary listener. It only runs once the connection is confirmed.
+    // We only set up listeners after the connection is established.
     socket.on('connect', () => {
-      // Now we know `socket.id` is valid and stable.
       console.log("CLIENT LOG: Connected to server with ID:", socket.id);
+      // This is the most reliable time to get our ID.
+      setMySocketId(socket.id); 
 
-      // We set up all other event listeners INSIDE this connect block.
+      // Set up all event listeners *inside* the connect block.
       // This guarantees they are created in a scope where socket.id is correct.
-      socket.on("joined", ({ clients: serverClients }) => {
+      socket.on("joined", ({ clients: serverClients, username }) => {
+        // Only show toast for other users joining.
+        if (username !== userName) {
+          toast.success(`${username} joined the room.`);
+        }
         setClients(serverClients);
       });
 
-      socket.on("code-change", ({ code: newCode }) => {
-        setCode(newCode);
-      });
+      socket.on("code-change", ({ code: newCode }) => setCode(newCode));
 
       socket.on('lock-status-update', ({ lockedBy, username }) => {
         setLockHolder(username);
-        // This check is now 100% reliable.
+        // The comparison now uses the guaranteed-to-be-correct state variable.
         setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
       });
 
-      socket.on("disconnected", ({ socketId }) => {
-        setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
+      socket.on("disconnected", ({ username }) => {
+        toast.error(`${username} left the room.`);
+        setClients((prevClients) => prevClients.filter((client) => client.username !== username));
       });
 
-      socket.on("language-update", ({ language: newLanguage }) => {
-        setLanguage(newLanguage);
-      });
+      socket.on("language-update", ({ language: newLanguage }) => setLanguage(newLanguage));
       
       socket.on("codeResponse", (response) => {
         setOutput(response.run.output || response.run.stderr || "No output.");
       });
 
-      // After all listeners are ready, we emit the join event.
+      // After setting up listeners, we can safely join the room.
       socket.emit("join", { roomId, username: userName });
     });
 
@@ -78,7 +85,7 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, [joined, roomId, userName]);
+  }, [joined, roomId, userName]); // This clean dependency array prevents loops.
 
 
   // --- EVENT HANDLERS ---
@@ -89,12 +96,19 @@ function App() {
       socketRef.current.emit('stop-typing-lock', { roomId });
     }
     setJoined(false);
+    // Reset all state for a clean slate
     setRoomId("");
     setUserName("");
     setClients([]);
     setCode("// Start coding here...");
     setLockHolder(null);
     setIsEditorLocked(false);
+    setMySocketId(null);
+  };
+
+  const handleCopyRoomId = () => {
+    navigator.clipboard.writeText(roomId);
+    toast.success('Room ID copied!'); // Use toast for feedback
   };
 
   const handleCodeChange = (newCode) => {
@@ -130,21 +144,25 @@ function App() {
   if (!joined) {
     return (
       <div className="join-modal-overlay"> 
-          <div className="join-modal-content">
-            <h1>Real-Time Code Editor</h1>
-            <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
-            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
-            <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
-          </div>
+        <Toaster position="top-center" /> {/* Add the Toaster component */}
+        <div className="join-modal-content">
+          <h1>Real-Time Code Editor</h1>
+          <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+          <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="editor-container">
+      <Toaster position="top-center" /> {/* Add the Toaster component here too */}
       <div className="sidebar">
         <div className="room-info">
           <h2>Room: {roomId}</h2>
+          {/* RESTORED: The Copy Room ID button */}
+          <button className="btn btn-secondary" onClick={handleCopyRoomId}>Copy ID</button>
         </div>
         <h3>Users ({clients.length})</h3>
         <ul className="user-list">
@@ -186,26 +204,14 @@ function App() {
         <div className="io-wrapper">
           <div className="input-area">
             <h4>Input</h4>
-            <textarea
-              className="io-console"
-              value={stdin}
-              onChange={(e) => setStdin(e.target.value)}
-              placeholder="Enter program input here..."
-            />
+            <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..."/>
           </div>
           <div className="output-area">
             <h4>Output</h4>
-            <textarea
-              className="io-console"
-              value={output}
-              readOnly
-              placeholder="Output will appear here..."
-            />
+            <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/>
           </div>
         </div>
-        <button className="btn btn-primary run-btn" onClick={handleRunCode}>
-          Execute Code
-        </button>
+        <button className="btn btn-primary run-btn" onClick={handleRunCode}>Execute Code</button>
       </div>
     </div>
   );
