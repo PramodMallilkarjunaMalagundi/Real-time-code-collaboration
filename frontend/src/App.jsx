@@ -37,8 +37,6 @@ function App() {
 
     socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
-    
-    // ADDED: Listener for language dropdown sync
     socket.on("language-update", (newLanguage) => setLanguage(newLanguage));
 
     socket.on('lock-status-update', ({ lockedBy, username }) => {
@@ -83,7 +81,6 @@ function App() {
     }
   };
 
-  // ADDED: Handler for the language dropdown
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
@@ -92,13 +89,14 @@ function App() {
     }
   };
 
+
   // --- RENDER LOGIC ---
   return (
-    // UPDATED: This wrapper now controls the blur effect
-    <div className={`app-container ${!joined ? 'blurred' : ''}`}>
-
-      {/* The main editor page is now ALWAYS rendered in the background */}
-      <div className="editor-container">
+    // This top-level div is the main container for the entire app
+    <div className="app-container">
+      
+      {/* The main editor page is ALWAYS rendered. We apply the blur class conditionally. */}
+      <div className={`editor-container ${!joined ? 'blurred' : ''}`}>
         <div className="sidebar">
           <div className="room-info">
             <h2>Room: {roomId || '...'}</h2>
@@ -116,7 +114,6 @@ function App() {
              {lockHolder ? `${lockHolder} is typing...` : '\u00A0' }
           </div>
           <div className="sidebar-footer">
-            {/* ADDED: The language selector is back */}
             <select
               className="language-selector"
               value={language}
@@ -131,10 +128,9 @@ function App() {
             <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
           </div>
         </div>
-
         <div className="editor-wrapper">
           <Editor
-            height="70%"
+            height="100%"
             language={language}
             value={code}
             onChange={handleCodeChange}
@@ -146,11 +142,10 @@ function App() {
               wordWrap: 'on'
             }}
           />
-          {/* IO wrapper for input/output would go here if you add it */}
         </div>
       </div>
 
-      {/* UPDATED: The join form now renders conditionally as an overlay */}
+      {/* The join form is rendered on top of everything if the user hasn't joined. */}
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">

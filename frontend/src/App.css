@@ -13,9 +13,10 @@ body {
 /* --- Styles for the Blurred Background Effect --- */
 /* ================================================= */
 
-.app-container.blurred .editor-container {
+/* THIS IS THE CORRECTED RULE: It targets the editor container directly */
+.editor-container.blurred {
   filter: blur(5px) brightness(0.7);
-  pointer-events: none;
+  pointer-events: none; /* Prevents interaction with the blurred background */
   transition: filter 0.3s ease-in-out;
 }
 
@@ -80,7 +81,6 @@ body {
 .btn-join:hover {
   background-color: #005f9e;
 }
-
 
 /* ================================================= */
 /* --- Styles for the DARK Editor Page --- */
@@ -164,6 +164,9 @@ body {
 
 .sidebar-footer {
   flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #3c3c3c;
 }
 
 .language-selector {
@@ -176,9 +179,8 @@ body {
   border-radius: 6px;
 }
 
-/* --- THE ONLY CHANGE IS HERE --- */
 .leave-btn {
-  width: 100%; /* This makes the button full-width */
+  width: 100%;
 }
 
 .editor-wrapper {
@@ -227,15 +229,6 @@ body {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: #ff9800;
-  color: #1e1e1e;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #e68900;
 }
 
 .btn-secondary {
