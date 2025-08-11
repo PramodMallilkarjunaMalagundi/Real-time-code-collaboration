@@ -1,7 +1,3 @@
-// =================================================================
-//                      IMPORTS AND SETUP
-// =================================================================
-
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -12,10 +8,6 @@ const server = http.createServer(app);
 
 const frontendURL = process.env.FRONTEND_URL;
 
-// =================================================================
-//             MIDDLEWARE AND CORS CONFIGURATION
-// =================================================================
-
 app.use(cors({ origin: frontendURL }));
 
 const io = new Server(server, {
@@ -24,10 +16,6 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
-
-// =================================================================
-//                STATE MANAGEMENT
-// =================================================================
 
 const userSocketMap = {};
 const roomLocks = {}; 
@@ -39,10 +27,6 @@ function getAllConnectedClients(roomId) {
     username: userSocketMap[socketId],
   }));
 }
-
-// =================================================================
-//                SOCKET.IO REAL-TIME LOGIC
-// =================================================================
 
 io.on("connection", (socket) => {
   console.log("A user connected, socket ID:", socket.id);
@@ -69,9 +53,9 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // ADDED: Listener to sync the language dropdown for all users
+  // ADDED: Handle language change event
   socket.on("language-change", ({ roomId, language }) => {
-    socket.to(roomId).emit("language-update", language);
+    socket.to(roomId).emit("language-update", { language });
   });
 
   socket.on('start-typing-lock', ({ roomId }) => {
@@ -118,9 +102,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// =================================================================
-//                      START THE SERVER
-// =================================================================
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Server is running on port ${PORT}`)
