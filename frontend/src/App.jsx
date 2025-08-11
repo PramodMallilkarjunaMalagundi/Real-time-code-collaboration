@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import "./App.css"; // Ensure this line is here
+import "./App.css"; 
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
@@ -83,23 +83,32 @@ function App() {
   };
 
   // --- RENDER LOGIC ---
-  
-  // Conditionally render EITHER the join form OR the editor
   if (!joined) {
-    // This JSX uses the class names from your original CSS for the join screen
     return (
       <div className="join-modal-overlay"> 
           <div className="join-modal-content">
             <h1>Real-Time Code Editor</h1>
-            <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.g.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+            <input 
+              type="text" 
+              placeholder="Room ID" 
+              value={roomId} 
+              onChange={(e) => setRoomId(e.target.value)} 
+              onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} 
+            />
+            <input 
+              type="text" 
+              placeholder="Your Name" 
+              value={userName} 
+              // THIS IS THE ONLY LINE THAT WAS FIXED
+              onChange={(e) => setUserName(e.target.value)} 
+              onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} 
+            />
             <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
           </div>
       </div>
     );
   }
 
-  // This is the main editor view
   return (
     <div className="editor-container">
       <div className="sidebar">
@@ -124,7 +133,7 @@ function App() {
       </div>
       <div className="editor-wrapper">
         <Editor
-          height="90vh" // Adjusted height
+          height="90vh"
           language={"javascript"}
           value={code}
           onChange={handleCodeChange}
