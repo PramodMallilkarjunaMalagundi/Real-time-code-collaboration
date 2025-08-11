@@ -1,11 +1,13 @@
 // =================================================================
-//                      FINAL BACKEND (with Language Sync)
+//                      FINAL BACKEND (with Code Execution)
 // =================================================================
 
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+// ADDED: Import `node-fetch` to make API requests from the backend
+const fetch = require('node-fetch');
 
 const app = express();
 const server = http.createServer(app);
@@ -48,10 +50,38 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit('typing', { username });
   });
 
-  // ADDED: This block listens for a language change and broadcasts it
   socket.on('language-change', ({ roomId, language }) => {
     socket.to(roomId).emit('language-change', { language });
   });
+
+  // =================================================================
+  //        *** NEW CODE BLOCK FOR CODE EXECUTION ***
+  // =================================================================
+  socket.on('compileCode', async ({ code, language, stdin }) => {
+    try {
+      const response = await fetch('https://piston.znci.dev/api/v2/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: language,
+          version: '*', // Use the latest version of the language
+          files: [{ content: code }],
+          stdin: stdin,
+        }),
+      });
+
+      const data = await response.json();
+      
+      // Send the result back to the user who requested it
+      socket.emit('codeResponse', data);
+
+    } catch (error) {
+      console.error('Error executing code:', error);
+      // Send an error message back to the user
+      socket.emit('codeResponse', { run: { stderr: 'Failed to execute code on the server.' } });
+    }
+  });
+  // =================================================================
 
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
