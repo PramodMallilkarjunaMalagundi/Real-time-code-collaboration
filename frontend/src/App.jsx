@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import "./App.css";
+import "./App.css"; // Ensure this line is here
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
@@ -15,7 +15,6 @@ function App() {
   
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null);
-  // CORRECTED: Storing our own socket ID in state to avoid timing issues
   const [mySocketId, setMySocketId] = useState(null);
 
   // --- REFS ---
@@ -29,27 +28,18 @@ function App() {
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
-    // CORRECTED: Set our socket ID reliably into state on connection
     socket.on('connect', () => {
       setMySocketId(socket.id);
     });
 
     socket.emit("join", { roomId, username: userName });
 
-    socket.on("joined", ({ clients: serverClients }) => {
-      setClients(serverClients);
-    });
-
-    socket.on("code-change", ({ code: newCode }) => {
-      setCode(newCode);
-    });
-
+    socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
+    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
     socket.on('lock-status-update', ({ lockedBy, username }) => {
       setLockHolder(username);
-      // CORRECTED: Now this check reliably uses the state variable for our ID
-      setIsEditorLocked(lockedBy !== null && lockedBy !== mySocketId);
+      setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
     });
-
     socket.on("disconnected", ({ socketId }) => {
       setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
     });
@@ -58,7 +48,7 @@ function App() {
       if (socket) socket.disconnect();
       if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
     };
-  }, [joined, roomId, userName, mySocketId]); // Added mySocketId to dependency array
+  }, [joined, roomId, userName, mySocketId]);
 
 
   // --- EVENT HANDLERS ---
@@ -93,56 +83,60 @@ function App() {
   };
 
   // --- RENDER LOGIC ---
-  return (
-    <div className={`app-container ${!joined ? 'blurred' : ''}`}>
-      <div className="editor-container">
-        <div className="sidebar">
-          <div className="room-info">
-            <h2>Room: {roomId || '...'}</h2>
-          </div>
-          <h3>Users ({clients.length})</h3>
-          <ul className="user-list">
-            {clients.map((client) => (
-              <li className="client-item" key={client.socketId}>
-                <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
-                <span>{client.username}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="typing-indicator">
-             {lockHolder ? `${lockHolder} is typing...` : '\u00A0' }
-          </div>
-          <div className="sidebar-footer">
-            <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
-          </div>
-        </div>
-        <div className="editor-wrapper">
-          <Editor
-            height="70%"
-            language={"javascript"}
-            value={code}
-            onChange={handleCodeChange}
-            theme="vs-dark"
-            options={{
-              readOnly: isEditorLocked,
-              minimap: { enabled: false },
-              fontSize: 16,
-              wordWrap: 'on'
-            }}
-          />
-        </div>
-      </div>
-
-      {!joined && (
-        <div className="join-modal-overlay">
+  
+  // Conditionally render EITHER the join form OR the editor
+  if (!joined) {
+    // This JSX uses the class names from your original CSS for the join screen
+    return (
+      <div className="join-modal-overlay"> 
           <div className="join-modal-content">
             <h1>Real-Time Code Editor</h1>
             <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
+            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.g.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
             <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
           </div>
+      </div>
+    );
+  }
+
+  // This is the main editor view
+  return (
+    <div className="editor-container">
+      <div className="sidebar">
+        <div className="room-info">
+          <h2>Room: {roomId}</h2>
         </div>
-      )}
+        <h3>Users ({clients.length})</h3>
+        <ul className="user-list">
+          {clients.map((client) => (
+            <li className="client-item" key={client.socketId}>
+              <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
+              <span>{client.username}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="typing-indicator">
+          {lockHolder ? `${lockHolder} is typing...` : '\u00A0'}
+        </div>
+        <div className="sidebar-footer">
+          <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
+        </div>
+      </div>
+      <div className="editor-wrapper">
+        <Editor
+          height="90vh" // Adjusted height
+          language={"javascript"}
+          value={code}
+          onChange={handleCodeChange}
+          theme="vs-dark"
+          options={{
+            readOnly: isEditorLocked,
+            minimap: { enabled: false },
+            fontSize: 16,
+            wordWrap: 'on'
+          }}
+        />
+      </div>
     </div>
   );
 }
