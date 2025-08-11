@@ -12,13 +12,10 @@ function App() {
   const [joined, setJoined] = useState(false);
   const [clients, setClients] = useState([]);
   const [code, setCode] = useState("// Start coding here...");
-  
-  // RE-ADDED: State for language selection
   const [language, setLanguage] = useState("javascript");
   
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null);
-  const [mySocketId, setMySocketId] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
@@ -26,37 +23,45 @@ function App() {
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
-    if (!joined) return;
+    // This effect only runs when `joined` becomes true.
+    if (!joined) {
+        // If there's an old socket connection, disconnect it when leaving.
+        if(socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
+        return;
+    }
 
     const socket = io(SERVER_URL);
     socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setMySocketId(socket.id);
-    });
 
     socket.emit("join", { roomId, username: userName });
 
     // --- EVENT LISTENERS ---
     socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
+    
     socket.on('lock-status-update', ({ lockedBy, username }) => {
       setLockHolder(username);
-      // NOTE: Using socket.id directly here is generally safe after connect event
+      // The crucial check. `socket.id` here refers to the ID of the stable socket
+      // connection that this listener is attached to. It will be correct.
       setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
     });
+
     socket.on("disconnected", ({ socketId }) => {
       setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
     });
-    // RE-ADDED: Listener for language updates
+
     socket.on("language-update", ({ language: newLanguage }) => {
       setLanguage(newLanguage);
     });
 
+    // --- CLEANUP LOGIC ---
     return () => {
-      if (socket) socket.disconnect();
-      if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
+      socket.disconnect();
     };
+  // This clean dependency array prevents reconnect loops.
   }, [joined, roomId, userName]);
 
 
@@ -74,7 +79,6 @@ function App() {
     setCode("// Start coding here...");
     setLockHolder(null);
     setIsEditorLocked(false);
-    setMySocketId(null);
   };
 
   const handleCodeChange = (newCode) => {
@@ -91,7 +95,6 @@ function App() {
     }
   };
   
-  // RE-ADDED: Handler for language change
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
@@ -133,12 +136,7 @@ function App() {
           {lockHolder ? `${lockHolder} is typing...` : '\u00A0'}
         </div>
         <div className="sidebar-footer">
-          {/* RE-ADDED: Language selector dropdown */}
-          <select
-            className="language-selector"
-            value={language}
-            onChange={handleLanguageChange}
-          >
+          <select className="language-selector" value={language} onChange={handleLanguageChange}>
             <option value="javascript">JavaScript</option>
             <option value="python">Python</option>
             <option value="java">Java</option>
