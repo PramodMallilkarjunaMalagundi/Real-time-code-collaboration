@@ -30,7 +30,6 @@ const io = new Server(server, {
 // =================================================================
 
 const userSocketMap = {};
-// This object will store who holds the edit lock for each room.
 const roomLocks = {}; 
 
 function getAllConnectedClients(roomId) {
@@ -70,7 +69,11 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // UPDATED: Logic for the automatic typing lock
+  // ADDED: Listener to sync the language dropdown for all users
+  socket.on("language-change", ({ roomId, language }) => {
+    socket.to(roomId).emit("language-update", language);
+  });
+
   socket.on('start-typing-lock', ({ roomId }) => {
     if (!roomLocks[roomId]) {
         roomLocks[roomId] = socket.id;
@@ -81,7 +84,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // UPDATED: Logic for automatically releasing the lock
   socket.on('stop-typing-lock', ({ roomId }) => {
     if (roomLocks[roomId] === socket.id) {
         delete roomLocks[roomId];
@@ -92,7 +94,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Auto-release lock on disconnect
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {

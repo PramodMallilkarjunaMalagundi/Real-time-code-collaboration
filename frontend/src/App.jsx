@@ -11,6 +11,7 @@ function App() {
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
   const [clients, setClients] = useState([]);
+  const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("// Start coding here...");
   
   const [isEditorLocked, setIsEditorLocked] = useState(false);
@@ -34,13 +35,11 @@ function App() {
 
     socket.emit("join", { roomId, username: userName });
 
-    socket.on("joined", ({ clients: serverClients }) => {
-      setClients(serverClients);
-    });
-
-    socket.on("code-change", ({ code: newCode }) => {
-      setCode(newCode);
-    });
+    socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
+    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
+    
+    // ADDED: Listener for language dropdown sync
+    socket.on("language-update", (newLanguage) => setLanguage(newLanguage));
 
     socket.on('lock-status-update', ({ lockedBy, username }) => {
       setLockHolder(username);
@@ -59,22 +58,15 @@ function App() {
 
 
   // --- EVENT HANDLERS ---
-  const handleJoinRoom = () => {
-    if (roomId.trim() && userName.trim()) setJoined(true);
-  };
+  const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
 
   const handleLeaveRoom = () => {
     if (lockHolder === userName && socketRef.current) {
       socketRef.current.emit('stop-typing-lock', { roomId });
     }
     setJoined(false);
-    setRoomId("");
-    setUserName("");
-    setClients([]);
-    setCode("// Start coding here...");
-    setLockHolder(null);
-    setIsEditorLocked(false);
-    setMySocketId(null);
+    setRoomId(""); setUserName(""); setClients([]); setCode("// Start coding here...");
+    setLockHolder(null); setIsEditorLocked(false); setMySocketId(null);
   };
 
   const handleCodeChange = (newCode) => {
@@ -91,11 +83,21 @@ function App() {
     }
   };
 
+  // ADDED: Handler for the language dropdown
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    if (socketRef.current) {
+      socketRef.current.emit("language-change", { roomId, language: newLanguage });
+    }
+  };
+
   // --- RENDER LOGIC ---
   return (
-    // UPDATED: Added a wrapper with a conditional class for the blur effect
+    // UPDATED: This wrapper now controls the blur effect
     <div className={`app-container ${!joined ? 'blurred' : ''}`}>
-      {/* --- Main Editor Page --- */}
+
+      {/* The main editor page is now ALWAYS rendered in the background */}
       <div className="editor-container">
         <div className="sidebar">
           <div className="room-info">
@@ -104,7 +106,6 @@ function App() {
           <h3>Users ({clients.length})</h3>
           <ul className="user-list">
             {clients.map((client) => (
-              // UPDATED: Used a more descriptive class name
               <li className="client-item" key={client.socketId}>
                 <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
                 <span>{client.username}</span>
@@ -115,13 +116,26 @@ function App() {
              {lockHolder ? `${lockHolder} is typing...` : '\u00A0' }
           </div>
           <div className="sidebar-footer">
+            {/* ADDED: The language selector is back */}
+            <select
+              className="language-selector"
+              value={language}
+              onChange={handleLanguageChange}
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="go">Go</option>
+            </select>
             <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
           </div>
         </div>
+
         <div className="editor-wrapper">
           <Editor
             height="70%"
-            language={"javascript"}
+            language={language}
             value={code}
             onChange={handleCodeChange}
             theme="vs-dark"
@@ -132,12 +146,11 @@ function App() {
               wordWrap: 'on'
             }}
           />
-          {/* ... Your IO wrapper would go here ... */}
+          {/* IO wrapper for input/output would go here if you add it */}
         </div>
       </div>
 
-      {/* --- Join Modal --- */}
-      {/* UPDATED: This now renders as an overlay when user is not joined */}
+      {/* UPDATED: The join form now renders conditionally as an overlay */}
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">
