@@ -9,7 +9,6 @@ const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
-
 const frontendURL = process.env.FRONTEND_URL;
 
 // =================================================================
@@ -30,6 +29,8 @@ const io = new Server(server, {
 // =================================================================
 
 const userSocketMap = {};
+// This object will now store who is the designated "typist" for each room.
+const roomTypist = {}; 
 
 function getAllConnectedClients(roomId) {
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
@@ -52,32 +53,60 @@ io.on("connection", (socket) => {
 
     const clients = getAllConnectedClients(roomId);
     
-    // Notify all clients in the room that a new user has joined.
     clients.forEach(({ socketId }) => {
       io.to(socketId).emit("joined", { clients, username, socketId: socket.id });
+    });
+
+    // When a new user joins, tell them who the current typist is.
+    const typistSocketId = roomTypist[roomId];
+    const typistUsername = typistSocketId ? userSocketMap[typistSocketId] : null;
+    socket.emit('typist-update', {
+        socketId: typistSocketId,
+        username: typistUsername,
     });
   });
 
   socket.on("code-change", ({ roomId, code }) => {
-    socket.to(roomId).emit("code-change", { code });
+    // SERVER-SIDE ENFORCEMENT: Only broadcast code changes from the official typist.
+    if (!roomTypist[roomId] || roomTypist[roomId] === socket.id) {
+        // If the room has no typist, the first person to type becomes the typist.
+        if (!roomTypist[roomId]) {
+            roomTypist[roomId] = socket.id;
+            io.to(roomId).emit('typist-update', {
+                socketId: socket.id,
+                username: userSocketMap[socket.id],
+            });
+        }
+        socket.to(roomId).emit("code-change", { code });
+    }
   });
 
-  // This listener for the "is typing..." indicator remains.
-  socket.on('typing', ({ roomId, username }) => {
-    socket.to(roomId).emit('typing', { username });
+  // When a user's client says they've stopped typing, release the typist role.
+  socket.on('stop-typing', ({ roomId }) => {
+    if (roomTypist[roomId] === socket.id) {
+        delete roomTypist[roomId];
+        io.to(roomId).emit('typist-update', {
+            socketId: null,
+            username: null,
+        });
+    }
   });
 
   socket.on("language-change", ({ roomId, language }) => {
     socket.to(roomId).emit("language-update", { language });
   });
 
-  socket.on("codeResponse", (response) => {
-    socket.emit("codeResponse", response);
-  });
-
+  // Auto-release typist role on disconnect.
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
+      if (roomTypist[roomId] === socket.id) {
+          delete roomTypist[roomId];
+          socket.to(roomId).emit('typist-update', {
+            socketId: null,
+            username: null,
+          });
+      }
       socket.to(roomId).emit("disconnected", {
         socketId: socket.id,
         username: userSocketMap[socket.id],
@@ -85,10 +114,6 @@ io.on("connection", (socket) => {
     });
     delete userSocketMap[socket.id];
     socket.leave();
-  });
-
-  socket.on("disconnect", () => {
-    console.log("A user disconnected, socket ID:", socket.id);
   });
 });
 
