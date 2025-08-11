@@ -1,14 +1,12 @@
 // =================================================================
-//                      FINAL App.jsx (with Notifications)
+//                      FINAL App.jsx (with Language Sync)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
-// ADDED: Import react-hot-toast
 import toast, { Toaster } from 'react-hot-toast';
-
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -20,18 +18,15 @@ function App() {
   const [clients, setClients] = useState([]);
   const [code, setCode] = useState("// Start coding here...");
   const [language, setLanguage] = useState("javascript");
-  const [stdin, setStdin] = useState(""); // ADDED: Restore stdin state
-  const [output, setOutput] = useState(""); // ADDED: Restore output state
+  const [stdin, setStdin] = useState("");
+  const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
-  
   const [typingUser, setTypingUser] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  // ADDED: Ref for the code execution toast ID
   const executeToastIdRef = useRef(null);
-
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -47,9 +42,8 @@ function App() {
     socket.emit("join", { roomId, username: userName });
 
     // --- EVENT LISTENERS ---
-    socket.on("joined", ({ clients: serverClients, username }) => { // ADDED username param
+    socket.on("joined", ({ clients: serverClients, username }) => {
       setClients(serverClients);
-      // ADDED: Notification for user joined (only for others)
       if (username !== userName) {
         toast.success(`${username} joined the room.`);
       }
@@ -69,23 +63,20 @@ function App() {
       }
     });
 
-    socket.on("disconnected", ({ socketId, username }) => { // ADDED username param
+    // ADDED: Listen for language changes from other clients
+    socket.on('language-change', ({ language: newLanguage }) => {
+      setLanguage(newLanguage);
+    });
+
+    socket.on("disconnected", ({ socketId, username }) => {
       setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
-      // ADDED: Notification for user disconnected
       toast.error(`${username} left the room.`);
     });
 
-    // ADDED: Listener for code execution response
     socket.on("codeResponse", (response) => {
-      // ADDED: Dismiss the loading toast
-      if (executeToastIdRef.current) {
-        toast.dismiss(executeToastIdRef.current);
-      }
-      
+      if (executeToastIdRef.current) toast.dismiss(executeToastIdRef.current);
       const outputMsg = response.run.output || response.run.stderr || "No output.";
       setOutput(outputMsg);
-      
-      // ADDED: Show success/error toast based on output
       if (response.run.stderr) {
         toast.error('Code execution failed!');
       } else {
@@ -93,15 +84,11 @@ function App() {
       }
     });
 
-
     // --- CLEANUP ---
     return () => {
       if (socket) socket.disconnect();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      // ADDED: Dismiss any lingering toast if component unmounts
-      if (executeToastIdRef.current) {
-        toast.dismiss(executeToastIdRef.current);
-      }
+      if (executeToastIdRef.current) toast.dismiss(executeToastIdRef.current);
     };
   }, [joined, roomId, userName]);
 
@@ -113,15 +100,12 @@ function App() {
     setJoined(false);
     setRoomId(""); setUserName(""); setClients([]); setCode("// Start coding here...");
     setTypingUser(null);
-    // ADDED: Optional - show a leave notification for self
     toast('You have left the room.', { icon: '👋' });
   };
   
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId);
-    // ADDED: Use react-hot-toast for copy success
     toast.success('Room ID copied!');
-    // Removed setCopySuccess and setTimeout as toast handles it
   };
 
   const handleCodeChange = (newCode) => {
@@ -132,26 +116,30 @@ function App() {
     }
   };
   
-  // ADDED: handleRunCode with loading and output setting
+  // UPDATED: This handler now also sends an event to the server
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    if (socketRef.current) {
+      socketRef.current.emit('language-change', {
+        roomId,
+        language: newLanguage,
+      });
+    }
+  };
+
   const handleRunCode = () => {
     setOutput("Executing...");
-    // ADDED: Show a loading toast
     executeToastIdRef.current = toast.loading('Executing code...');
     if (socketRef.current) {
-      // Assuming 'compileCode' is the event your backend expects for execution
       socketRef.current.emit("compileCode", { code, roomId, language, stdin });
     }
   };
 
-
   // --- RENDER LOGIC ---
   return (
     <div className="app-container">
-      {/* ADDED: Toaster component for notifications */}
-      <Toaster 
-        position="bottom-right" // Position of toasts
-        reverseOrder={false}     // New toasts appear at the bottom
-      />
+      <Toaster position="bottom-right" reverseOrder={false} />
 
       {!joined && (
         <div className="join-modal-overlay">
@@ -169,7 +157,7 @@ function App() {
           <div className="room-info">
             <h2>Room: {roomId || '...'}</h2>
             <button className="btn btn-secondary" onClick={handleCopyRoomId}>
-              {copySuccess || "Copy ID"} {/* copySuccess is no longer used but can remain for initial render */}
+              {copySuccess || "Copy ID"}
             </button>
           </div>
           <h3>Users ({clients.length})</h3>
@@ -191,7 +179,8 @@ function App() {
             )}
           </div>
           <div className="sidebar-footer">
-            <select className="language-selector" value={language} onChange={(e) => setLanguage(e.target.value)}>
+            {/* UPDATED: The onChange handler is now `handleLanguageChange` */}
+            <select className="language-selector" value={language} onChange={handleLanguageChange}>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
                 <option value="java">Java</option>

@@ -1,6 +1,6 @@
 // =================================================================
-//                      FINAL BACKEND CODE (No Lock System)
-// =================================  ================================
+//                      FINAL BACKEND (with Language Sync)
+// =================================================================
 
 const express = require("express");
 const http = require("http");
@@ -44,9 +44,13 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // This simple event just tells others that a user is typing.
   socket.on('typing', ({ roomId, username }) => {
     socket.to(roomId).emit('typing', { username });
+  });
+
+  // ADDED: This block listens for a language change and broadcasts it
+  socket.on('language-change', ({ roomId, language }) => {
+    socket.to(roomId).emit('language-change', { language });
   });
 
   socket.on("disconnecting", () => {
