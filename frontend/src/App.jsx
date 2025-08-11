@@ -13,16 +13,11 @@ function App() {
   const [clients, setClients] = useState([]);
   const [code, setCode] = useState("// Start coding here...");
   const [language, setLanguage] = useState("javascript");
-  
-  // RE-ADDED: State for the input and output panes
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
-
+  
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null);
-  
-  // FINAL FIX: We still need to reliably know our own ID. This state is essential.
-  const [mySocketId, setMySocketId] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
@@ -30,55 +25,59 @@ function App() {
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
-    // This effect should only run when the user has actively joined a room.
+    // This effect handles the entire connection lifecycle based on `joined` state.
     if (!joined) {
-        if(socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-        }
-        return;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      return;
     }
 
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
-    // FINAL FIX: This is the most reliable way. When the connection is established,
-    // the server gives us our ID. We store it in state immediately.
+    // This is the primary listener. It only runs once the connection is confirmed.
     socket.on('connect', () => {
-      setMySocketId(socket.id);
+      // Now we know `socket.id` is valid and stable.
+      console.log("CLIENT LOG: Connected to server with ID:", socket.id);
+
+      // We set up all other event listeners INSIDE this connect block.
+      // This guarantees they are created in a scope where socket.id is correct.
+      socket.on("joined", ({ clients: serverClients }) => {
+        setClients(serverClients);
+      });
+
+      socket.on("code-change", ({ code: newCode }) => {
+        setCode(newCode);
+      });
+
+      socket.on('lock-status-update', ({ lockedBy, username }) => {
+        setLockHolder(username);
+        // This check is now 100% reliable.
+        setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
+      });
+
+      socket.on("disconnected", ({ socketId }) => {
+        setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
+      });
+
+      socket.on("language-update", ({ language: newLanguage }) => {
+        setLanguage(newLanguage);
+      });
+      
+      socket.on("codeResponse", (response) => {
+        setOutput(response.run.output || response.run.stderr || "No output.");
+      });
+
+      // After all listeners are ready, we emit the join event.
+      socket.emit("join", { roomId, username: userName });
     });
 
-    socket.emit("join", { roomId, username: userName });
-
-    // --- EVENT LISTENERS ---
-    socket.on("joined", ({ clients: serverClients }) => setClients(serverClients));
-    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
-    
-    socket.on('lock-status-update', ({ lockedBy, username }) => {
-      setLockHolder(username);
-      // FINAL FIX: The comparison now uses the guaranteed-to-be-correct state variable.
-      setIsEditorLocked(lockedBy !== null && lockedBy !== mySocketId);
-    });
-
-    socket.on("disconnected", ({ socketId }) => {
-      setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
-    });
-
-    socket.on("language-update", ({ language: newLanguage }) => {
-      setLanguage(newLanguage);
-    });
-    
-    // RE-ADDED: Listener for code execution response
-    socket.on("codeResponse", (response) => {
-      setOutput(response.run.output || response.run.stderr || "No output.");
-    });
-
-
-    // --- CLEANUP LOGIC ---
+    // Cleanup logic for when the component unmounts or `joined` becomes false.
     return () => {
       socket.disconnect();
     };
-  // FINAL FIX: The dependency array is clean, preventing loops. `mySocketId` is managed internally.
   }, [joined, roomId, userName]);
 
 
@@ -96,7 +95,6 @@ function App() {
     setCode("// Start coding here...");
     setLockHolder(null);
     setIsEditorLocked(false);
-    setMySocketId(null); // Reset our ID
   };
 
   const handleCodeChange = (newCode) => {
@@ -117,11 +115,10 @@ function App() {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
     if (socketRef.current) {
-        socketRef.current.emit("language-change", { roomId, language: newLanguage });
+      socketRef.current.emit("language-change", { roomId, language: newLanguage });
     }
   };
   
-  // RE-ADDED: Handler to run code
   const handleRunCode = () => {
     setOutput("Executing...");
     if (socketRef.current) {
@@ -185,7 +182,7 @@ function App() {
             wordWrap: 'on'
           }}
         />
-        {/* RE-ADDED: The missing IO wrapper and button */}
+        {/* RESTORED: The missing IO wrapper and button */}
         <div className="io-wrapper">
           <div className="input-area">
             <h4>Input</h4>
