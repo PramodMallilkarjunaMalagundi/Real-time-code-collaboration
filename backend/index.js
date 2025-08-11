@@ -1,3 +1,7 @@
+// =================================================================
+//                      IMPORTS AND SETUP
+// =================================================================
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -8,6 +12,10 @@ const server = http.createServer(app);
 
 const frontendURL = process.env.FRONTEND_URL;
 
+// =================================================================
+//             MIDDLEWARE AND CORS CONFIGURATION
+// =================================================================
+
 app.use(cors({ origin: frontendURL }));
 
 const io = new Server(server, {
@@ -17,8 +25,11 @@ const io = new Server(server, {
   },
 });
 
+// =================================================================
+//                STATE MANAGEMENT
+// =================================================================
+
 const userSocketMap = {};
-const roomLocks = {}; 
 
 function getAllConnectedClients(roomId) {
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
@@ -27,6 +38,10 @@ function getAllConnectedClients(roomId) {
     username: userSocketMap[socketId],
   }));
 }
+
+// =================================================================
+//                SOCKET.IO REAL-TIME LOGIC
+// =================================================================
 
 io.on("connection", (socket) => {
   console.log("A user connected, socket ID:", socket.id);
@@ -37,15 +52,9 @@ io.on("connection", (socket) => {
 
     const clients = getAllConnectedClients(roomId);
     
+    // Notify all clients in the room that a new user has joined.
     clients.forEach(({ socketId }) => {
       io.to(socketId).emit("joined", { clients, username, socketId: socket.id });
-    });
-
-    const lockedBySocketId = roomLocks[roomId];
-    const lockHolderUsername = lockedBySocketId ? userSocketMap[lockedBySocketId] : null;
-    socket.emit('lock-status-update', {
-        lockedBy: lockedBySocketId,
-        username: lockHolderUsername,
     });
   });
 
@@ -53,41 +62,22 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // ADDED: Handle language change event
+  // This listener for the "is typing..." indicator remains.
+  socket.on('typing', ({ roomId, username }) => {
+    socket.to(roomId).emit('typing', { username });
+  });
+
   socket.on("language-change", ({ roomId, language }) => {
     socket.to(roomId).emit("language-update", { language });
   });
 
-  socket.on('start-typing-lock', ({ roomId }) => {
-    if (!roomLocks[roomId]) {
-        roomLocks[roomId] = socket.id;
-        io.to(roomId).emit('lock-status-update', {
-            lockedBy: socket.id,
-            username: userSocketMap[socket.id],
-        });
-    }
-  });
-
-  socket.on('stop-typing-lock', ({ roomId }) => {
-    if (roomLocks[roomId] === socket.id) {
-        delete roomLocks[roomId];
-        io.to(roomId).emit('lock-status-update', {
-            lockedBy: null,
-            username: null,
-        });
-    }
+  socket.on("codeResponse", (response) => {
+    socket.emit("codeResponse", response);
   });
 
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
-      if (roomLocks[roomId] === socket.id) {
-          delete roomLocks[roomId];
-          socket.to(roomId).emit('lock-status-update', {
-            lockedBy: null,
-            username: null,
-          });
-      }
       socket.to(roomId).emit("disconnected", {
         socketId: socket.id,
         username: userSocketMap[socket.id],
@@ -102,6 +92,9 @@ io.on("connection", (socket) => {
   });
 });
 
+// =================================================================
+//                      START THE SERVER
+// =================================================================
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Server is running on port ${PORT}`)

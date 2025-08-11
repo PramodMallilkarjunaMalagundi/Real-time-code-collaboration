@@ -16,23 +16,12 @@ function App() {
   const [language, setLanguage] = useState("javascript");
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
-
-  // =================================================================
-  //           *** THE DEFINITIVE FIX FOR THE LOCK ***
-  // =================================================================
-  // STEP 1: Store our own socket ID and the lock information in state.
-  const [lockInfo, setLockInfo] = useState({ lockedBy: null, username: null });
-  const [mySocketId, setMySocketId] = useState(null);
   
-  // STEP 2: Calculate if the editor should be locked based on the latest state.
-  // This variable is recalculated on every single render, avoiding stale values.
-  const isEditorLocked = lockInfo.lockedBy !== null && lockInfo.lockedBy !== mySocketId;
-  // =================================================================
-
+  // State for the "is typing..." indicator
+  const [typingUser, setTypingUser] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
-  const stopTypingTimeoutRef = useRef(null);
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -48,8 +37,8 @@ function App() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      // STEP 3: The most reliable way to get our ID is on the 'connect' event.
-      setMySocketId(socket.id);
+      console.log("CLIENT LOG: Connected with ID:", socket.id);
+      socket.emit("join", { roomId, username: userName });
     });
 
     socket.on("joined", ({ clients: serverClients, username }) => {
@@ -61,9 +50,12 @@ function App() {
 
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
     
-    // STEP 4: The listener's only job is to update the state with the server's data.
-    socket.on('lock-status-update', ({ lockedBy, username }) => {
-      setLockInfo({ lockedBy, username });
+    // This listener for the "is typing..." indicator remains.
+    socket.on('typing', ({ username }) => {
+        if (username !== userName) {
+            setTypingUser(username);
+            setTimeout(() => setTypingUser(null), 2000); // Hide after 2s
+        }
     });
 
     socket.on("disconnected", ({ username }) => {
@@ -76,8 +68,6 @@ function App() {
       setOutput(response.run.output || response.run.stderr || "No output.");
     });
 
-    socket.emit("join", { roomId, username: userName });
-
     return () => {
       socket.disconnect();
     };
@@ -88,16 +78,11 @@ function App() {
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
 
   const handleLeaveRoom = () => {
-    if (lockInfo.username === userName && socketRef.current) {
-      socketRef.current.emit('stop-typing-lock', { roomId });
-    }
     setJoined(false);
     setRoomId("");
     setUserName("");
     setClients([]);
     setCode("// Start coding here...");
-    setLockInfo({ lockedBy: null, username: null });
-    setMySocketId(null);
   };
 
   const handleCopyRoomId = () => {
@@ -106,19 +91,12 @@ function App() {
   };
 
   const handleCodeChange = (newCode) => {
-    // The check now uses the reliable `isEditorLocked` variable.
-    if (!isEditorLocked) {
-      setCode(newCode); // Update local state immediately
-      if (socketRef.current) {
-        if (!lockInfo.lockedBy) {
-          socketRef.current.emit('start-typing-lock', { roomId });
-        }
-        socketRef.current.emit("code-change", { roomId, code: newCode });
-        if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
-        stopTypingTimeoutRef.current = setTimeout(() => {
-          if (socketRef.current) socketRef.current.emit('stop-typing-lock', { roomId });
-        }, 2000);
-      }
+    setCode(newCode); // Always update local state
+    if (socketRef.current) {
+      // Always send code changes
+      socketRef.current.emit("code-change", { roomId, code: newCode });
+      // Also send a typing event so others know who is editing
+      socketRef.current.emit("typing", { roomId, username: userName });
     }
   };
   
@@ -170,7 +148,7 @@ function App() {
           ))}
         </ul>
         <div className="typing-indicator">
-          {lockInfo.username ? `${lockInfo.username} is typing...` : '\u00A0'}
+          {typingUser ? `${typingUser} is typing...` : '\u00A0'}
         </div>
         <div className="sidebar-footer">
           <select className="language-selector" value={language} onChange={handleLanguageChange}>
@@ -190,7 +168,7 @@ function App() {
           onChange={handleCodeChange}
           theme="vs-dark"
           options={{
-            readOnly: isEditorLocked,
+            readOnly: false, // Editor is NEVER read-only now
             minimap: { enabled: false },
             fontSize: 16,
             wordWrap: 'on'
