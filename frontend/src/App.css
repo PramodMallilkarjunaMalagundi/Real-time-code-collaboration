@@ -240,3 +240,16 @@ body {
 .btn-secondary:hover:not(:disabled) {
   background-color: #3c3c3c;
 }
+
+/* In frontend/src/App.css */
+
+/* ================================================= */
+/* --- Styles for the Blurred Background Effect --- */
+/* ================================================= */
+
+/* CORRECTED: This now correctly targets the editor when it should be blurred */
+.editor-container.blurred {
+  filter: blur(5px) brightness(0.7);
+  pointer-events: none;
+  transition: filter 0.3s ease-in-out;
+}
