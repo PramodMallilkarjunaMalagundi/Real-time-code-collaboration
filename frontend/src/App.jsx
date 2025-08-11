@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL, COMPLETE App.jsx
+//                      FINAL FRONTEND CODE (with BOLD typing user)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
@@ -10,7 +10,7 @@ import Editor from "@monaco-editor/react";
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 function App() {
-  // --- STATE MANAGEMENT (ALL UI ELEMENTS RESTORED) ---
+  // --- STATE MANAGEMENT ---
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
@@ -73,7 +73,7 @@ function App() {
   }, [joined, roomId, userName]);
 
 
-  // --- EVENT HANDLERS (ALL HANDLERS RESTORED) ---
+  // --- EVENT HANDLERS ---
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
 
   const handleLeaveRoom = () => {
@@ -108,7 +108,6 @@ function App() {
   // --- RENDER LOGIC ---
   return (
     <div className="app-container">
-      {/* --- JOIN MODAL --- */}
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">
@@ -120,7 +119,6 @@ function App() {
         </div>
       )}
 
-      {/* --- MAIN EDITOR PAGE --- */}
       <div className={`editor-container ${!joined ? 'blurred' : ''}`}>
         <div className="sidebar">
           <div className="room-info">
@@ -138,6 +136,9 @@ function App() {
               </li>
             ))}
           </ul>
+          {/* =================================================== */}
+          {/* --- THE ONLY CHANGE IS IN THIS DIV --- */}
+          {/* =================================================== */}
           <div className="typing-indicator">
             {typingUser ? (
               <>
@@ -147,6 +148,7 @@ function App() {
               '\u00A0' // Non-breaking space to maintain layout
             )}
           </div>
+          {/* =================================================== */}
           <div className="sidebar-footer">
             <select className="language-selector" value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="javascript">JavaScript</option>
