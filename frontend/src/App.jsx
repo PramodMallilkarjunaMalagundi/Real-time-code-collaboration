@@ -14,8 +14,15 @@ function App() {
   const [code, setCode] = useState("// Start coding here...");
   const [language, setLanguage] = useState("javascript");
   
+  // RE-ADDED: State for the input and output panes
+  const [stdin, setStdin] = useState("");
+  const [output, setOutput] = useState("");
+
   const [isEditorLocked, setIsEditorLocked] = useState(false);
   const [lockHolder, setLockHolder] = useState(null);
+  
+  // FINAL FIX: We still need to reliably know our own ID. This state is essential.
+  const [mySocketId, setMySocketId] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
@@ -23,9 +30,8 @@ function App() {
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
-    // This effect only runs when `joined` becomes true.
+    // This effect should only run when the user has actively joined a room.
     if (!joined) {
-        // If there's an old socket connection, disconnect it when leaving.
         if(socketRef.current) {
             socketRef.current.disconnect();
             socketRef.current = null;
@@ -36,6 +42,12 @@ function App() {
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
+    // FINAL FIX: This is the most reliable way. When the connection is established,
+    // the server gives us our ID. We store it in state immediately.
+    socket.on('connect', () => {
+      setMySocketId(socket.id);
+    });
+
     socket.emit("join", { roomId, username: userName });
 
     // --- EVENT LISTENERS ---
@@ -44,9 +56,8 @@ function App() {
     
     socket.on('lock-status-update', ({ lockedBy, username }) => {
       setLockHolder(username);
-      // The crucial check. `socket.id` here refers to the ID of the stable socket
-      // connection that this listener is attached to. It will be correct.
-      setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
+      // FINAL FIX: The comparison now uses the guaranteed-to-be-correct state variable.
+      setIsEditorLocked(lockedBy !== null && lockedBy !== mySocketId);
     });
 
     socket.on("disconnected", ({ socketId }) => {
@@ -56,12 +67,18 @@ function App() {
     socket.on("language-update", ({ language: newLanguage }) => {
       setLanguage(newLanguage);
     });
+    
+    // RE-ADDED: Listener for code execution response
+    socket.on("codeResponse", (response) => {
+      setOutput(response.run.output || response.run.stderr || "No output.");
+    });
+
 
     // --- CLEANUP LOGIC ---
     return () => {
       socket.disconnect();
     };
-  // This clean dependency array prevents reconnect loops.
+  // FINAL FIX: The dependency array is clean, preventing loops. `mySocketId` is managed internally.
   }, [joined, roomId, userName]);
 
 
@@ -79,6 +96,7 @@ function App() {
     setCode("// Start coding here...");
     setLockHolder(null);
     setIsEditorLocked(false);
+    setMySocketId(null); // Reset our ID
   };
 
   const handleCodeChange = (newCode) => {
@@ -100,6 +118,14 @@ function App() {
     setLanguage(newLanguage);
     if (socketRef.current) {
         socketRef.current.emit("language-change", { roomId, language: newLanguage });
+    }
+  };
+  
+  // RE-ADDED: Handler to run code
+  const handleRunCode = () => {
+    setOutput("Executing...");
+    if (socketRef.current) {
+      socketRef.current.emit("compileCode", { code, roomId, language, version: "*", stdin });
     }
   };
 
@@ -147,7 +173,7 @@ function App() {
       </div>
       <div className="editor-wrapper">
         <Editor
-          height="90vh"
+          height="55%"
           language={language}
           value={code}
           onChange={handleCodeChange}
@@ -159,6 +185,30 @@ function App() {
             wordWrap: 'on'
           }}
         />
+        {/* RE-ADDED: The missing IO wrapper and button */}
+        <div className="io-wrapper">
+          <div className="input-area">
+            <h4>Input</h4>
+            <textarea
+              className="io-console"
+              value={stdin}
+              onChange={(e) => setStdin(e.target.value)}
+              placeholder="Enter program input here..."
+            />
+          </div>
+          <div className="output-area">
+            <h4>Output</h4>
+            <textarea
+              className="io-console"
+              value={output}
+              readOnly
+              placeholder="Output will appear here..."
+            />
+          </div>
+        </div>
+        <button className="btn btn-primary run-btn" onClick={handleRunCode}>
+          Execute Code
+        </button>
       </div>
     </div>
   );
