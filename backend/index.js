@@ -9,6 +9,7 @@ const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
+
 const frontendURL = process.env.FRONTEND_URL;
 
 // =================================================================
@@ -29,10 +30,10 @@ const io = new Server(server, {
 // =================================================================
 
 const userSocketMap = {};
-// This object will now store who is the designated "typist" for each room.
-const roomTypist = {}; 
+const roomLocks = {}; 
 
 function getAllConnectedClients(roomId) {
+  // Use io.sockets.adapter.rooms to get all socket IDs in the room
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
   return socketIds.map((socketId) => ({
     socketId,
@@ -45,65 +46,65 @@ function getAllConnectedClients(roomId) {
 // =================================================================
 
 io.on("connection", (socket) => {
-  console.log("A user connected, socket ID:", socket.id);
+  console.log("BACKEND LOG: A user connected, socket ID:", socket.id);
 
   socket.on("join", ({ roomId, username }) => {
+    console.log(`BACKEND LOG: Received 'join' event from ${username} for room ${roomId}`);
     userSocketMap[socket.id] = username;
     socket.join(roomId);
 
     const clients = getAllConnectedClients(roomId);
     
-    clients.forEach(({ socketId }) => {
-      io.to(socketId).emit("joined", { clients, username, socketId: socket.id });
+    // *** FINAL DEBUG LOG - This is the most important part ***
+    // We are now broadcasting the 'joined' event specifically to everyone in the room.
+    console.log(`BACKEND LOG: Broadcasting 'joined' to ${clients.length} clients in room ${roomId}`);
+    io.to(roomId).emit("joined", {
+        clients,
+        username, // The name of the user who just joined
+        socketId: socket.id,
     });
-
-    // When a new user joins, tell them who the current typist is.
-    const typistSocketId = roomTypist[roomId];
-    const typistUsername = typistSocketId ? userSocketMap[typistSocketId] : null;
-    socket.emit('typist-update', {
-        socketId: typistSocketId,
-        username: typistUsername,
+    
+    // Send the current lock status to the new user
+    const lockedBySocketId = roomLocks[roomId];
+    const lockHolderUsername = lockedBySocketId ? userSocketMap[lockedBySocketId] : null;
+    socket.emit('lock-status-update', {
+        lockedBy: lockedBySocketId,
+        username: lockHolderUsername,
     });
   });
 
   socket.on("code-change", ({ roomId, code }) => {
-    // SERVER-SIDE ENFORCEMENT: Only broadcast code changes from the official typist.
-    if (!roomTypist[roomId] || roomTypist[roomId] === socket.id) {
-        // If the room has no typist, the first person to type becomes the typist.
-        if (!roomTypist[roomId]) {
-            roomTypist[roomId] = socket.id;
-            io.to(roomId).emit('typist-update', {
-                socketId: socket.id,
-                username: userSocketMap[socket.id],
-            });
-        }
-        socket.to(roomId).emit("code-change", { code });
+    // Send to everyone in the room except the sender
+    socket.to(roomId).emit("code-change", { code });
+  });
+
+  socket.on('start-typing-lock', ({ roomId }) => {
+    if (!roomLocks[roomId]) {
+        roomLocks[roomId] = socket.id;
+        io.to(roomId).emit('lock-status-update', {
+            lockedBy: socket.id,
+            username: userSocketMap[socket.id],
+        });
     }
   });
 
-  // When a user's client says they've stopped typing, release the typist role.
-  socket.on('stop-typing', ({ roomId }) => {
-    if (roomTypist[roomId] === socket.id) {
-        delete roomTypist[roomId];
-        io.to(roomId).emit('typist-update', {
-            socketId: null,
+  socket.on('stop-typing-lock', ({ roomId }) => {
+    if (roomLocks[roomId] === socket.id) {
+        delete roomLocks[roomId];
+        io.to(roomId).emit('lock-status-update', {
+            lockedBy: null,
             username: null,
         });
     }
   });
 
-  socket.on("language-change", ({ roomId, language }) => {
-    socket.to(roomId).emit("language-update", { language });
-  });
-
-  // Auto-release typist role on disconnect.
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
-      if (roomTypist[roomId] === socket.id) {
-          delete roomTypist[roomId];
-          socket.to(roomId).emit('typist-update', {
-            socketId: null,
+      if (roomLocks[roomId] === socket.id) {
+          delete roomLocks[roomId];
+          socket.to(roomId).emit('lock-status-update', {
+            lockedBy: null,
             username: null,
           });
       }
@@ -114,6 +115,10 @@ io.on("connection", (socket) => {
     });
     delete userSocketMap[socket.id];
     socket.leave();
+  });
+
+  socket.on("disconnect", () => {
+    console.log("BACKEND LOG: A user disconnected, socket ID:", socket.id);
   });
 });
 
