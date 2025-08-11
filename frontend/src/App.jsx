@@ -17,16 +17,14 @@ function App() {
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
   
-  // State for the "Typist" system
   const [typist, setTypist] = useState({ socketId: null, username: null });
   const [mySocketId, setMySocketId] = useState(null);
   
-  // This is a derived state. It's recalculated on every render for accuracy.
   const isEditorLocked = typist.socketId !== null && typist.socketId !== mySocketId;
 
   // --- REFS ---
   const socketRef = useRef(null);
-  const stopTypingTimeoutRef = useRef(null); // Ref for the "stop typing" timer
+  const stopTypingTimeoutRef = useRef(null);
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -52,7 +50,6 @@ function App() {
 
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
     
-    // Listen for updates on who the current typist is.
     socket.on('typist-update', ({ socketId, username }) => {
       setTypist({ socketId, username });
     });
@@ -97,84 +94,60 @@ function App() {
   };
 
   const handleCodeChange = (newCode) => {
-    setCode(newCode); // Always update local state
-    
-    // Only send events if you are allowed to edit.
+    setCode(newCode);
     if (!isEditorLocked && socketRef.current) {
-        // Send the code change. The server will make you the typist if the role is open.
         socketRef.current.emit("code-change", { roomId, code: newCode });
-
-        // Reset the timer that will release your "typist" role.
         if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
-        
         stopTypingTimeoutRef.current = setTimeout(() => {
             if (socketRef.current) socketRef.current.emit('stop-typing', { roomId });
-        }, 1500); // After 1.5 seconds of inactivity, you are no longer the typist.
+        }, 1500);
     }
   };
   
-  const handleLanguageChange = (e) => { /* ... same as before ... */ };
-  const handleRunCode = () => { /* ... same as before ... */ };
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    if (socketRef.current) {
+        socketRef.current.emit("language-change", { roomId, language: newLanguage });
+    }
+  };
+  
+  const handleRunCode = () => {
+    setOutput("Executing...");
+    if (socketRef.current) {
+        socketRef.current.emit("compileCode", { code, roomId, language, version: "*", stdin });
+    }
+  };
 
   // --- RENDER LOGIC ---
+  
+  // This is the correct way to render in a functional component.
+  // The incorrect App.prototype.render has been removed.
   if (!joined) {
-    return ( /* ... Join form JSX is the same ... */ );
-  }
-
-  return (
-    <div className="editor-container">
-      <Toaster position="top-center" />
-      <div className="sidebar">
-        {/* ... room info, users list ... */}
-        <div className="typing-indicator">
-          {typist.username ? `${typist.username} is typing...` : '\u00A0'}
-        </div>
-        {/* ... language selector, leave button ... */}
-      </div>
-      <div className="editor-wrapper">
-        <Editor
-          height="55%"
-          language={language}
-          value={code}
-          onChange={handleCodeChange}
-          theme="vs-dark"
-          options={{
-            readOnly: isEditorLocked,
-            minimap: { enabled: false },
-            fontSize: 16,
-            wordWrap: 'on'
-          }}
-        />
-        {/* ... IO wrapper and execute button ... */}
-      </div>
-    </div>
-  );
-}
-// Fill in the missing JSX for brevity
-App.prototype.render = function() {
-  if (!this.state.joined) {
     return (
       <div className="join-modal-overlay"> 
+          <Toaster position="top-center" />
           <div className="join-modal-content">
             <h1>Real-Time Code Editor</h1>
-            <input type="text" placeholder="Room ID" value={this.state.roomId} onChange={(e) => this.setState({roomId: e.target.value})} onKeyUp={(e) => e.key === 'Enter' && this.handleJoinRoom()}/>
-            <input type="text" placeholder="Your Name" value={this.state.userName} onChange={(e) => this.setState({userName: e.target.value})} onKeyUp={(e) => e.key === 'Enter' && this.handleJoinRoom()}/>
-            <button className="btn-join" onClick={this.handleJoinRoom}>Join Room</button>
+            <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()}/>
+            <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
           </div>
       </div>
     );
   }
+
   return (
       <div className="editor-container">
         <Toaster position="top-center" />
         <div className="sidebar">
           <div className="room-info">
-            <h2>Room: {this.state.roomId}</h2>
-            <button className="btn btn-secondary" onClick={this.handleCopyRoomId}>Copy ID</button>
+            <h2>Room: {roomId}</h2>
+            <button className="btn btn-secondary" onClick={handleCopyRoomId}>Copy ID</button>
           </div>
-          <h3>Users ({this.state.clients.length})</h3>
+          <h3>Users ({clients.length})</h3>
           <ul className="user-list">
-            {this.state.clients.map((client) => (
+            {clients.map((client) => (
               <li className="client-item" key={client.socketId}>
                 <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
                 <span>{client.username}</span>
@@ -182,27 +155,27 @@ App.prototype.render = function() {
             ))}
           </ul>
           <div className="typing-indicator">
-            {this.state.typist.username ? `${this.state.typist.username} is typing...` : '\u00A0'}
+            {typist.username ? `${typist.username} is typing...` : '\u00A0'}
           </div>
           <div className="sidebar-footer">
-            <select className="language-selector" value={this.state.language} onChange={this.handleLanguageChange}>
+            <select className="language-selector" value={language} onChange={handleLanguageChange}>
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
               <option value="java">Java</option>
               <option value="cpp">C++</option>
             </select>
-            <button className="btn btn-secondary leave-btn" onClick={this.handleLeaveRoom}>Leave Room</button>
+            <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
           </div>
         </div>
         <div className="editor-wrapper">
           <Editor
             height="55%"
-            language={this.state.language}
-            value={this.state.code}
-            onChange={(code) => this.handleCodeChange(code)}
+            language={language}
+            value={code}
+            onChange={handleCodeChange}
             theme="vs-dark"
             options={{
-              readOnly: this.state.isEditorLocked,
+              readOnly: isEditorLocked,
               minimap: { enabled: false },
               fontSize: 16,
               wordWrap: 'on'
@@ -211,18 +184,19 @@ App.prototype.render = function() {
           <div className="io-wrapper">
             <div className="input-area">
               <h4>Input</h4>
-              <textarea className="io-console" value={this.state.stdin} onChange={(e) => this.setState({stdin: e.target.value})} placeholder="Enter program input here..."/>
+              <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.g.value)} placeholder="Enter program input here..."/>
             </div>
             <div className="output-area">
               <h4>Output</h4>
-              <textarea className="io-console" value={this.state.output} readOnly placeholder="Output will appear here..."/>
+              <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..."/>
             </div>
           </div>
-          <button className="btn btn-primary run-btn" onClick={this.handleRunCode}>
+          <button className="btn btn-primary run-btn" onClick={handleRunCode}>
             Execute Code
           </button>
         </div>
       </div>
     );
 }
+
 export default App;
