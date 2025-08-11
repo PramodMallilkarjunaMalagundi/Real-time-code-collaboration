@@ -1,197 +1,70 @@
 // =================================================================
-//                      FINAL, COMPLETE App.jsx
-// =================================================================
+//                      FINAL BACKEND CODE (No Lock System)
+// =================================  ================================
 
-import { useEffect, useState, useRef } from "react";
-import "./App.css";
-import io from "socket.io-client";
-import Editor from "@monaco-editor/react";
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 
-const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const app = express();
+const server = http.createServer(app);
+const frontendURL = process.env.FRONTEND_URL;
 
-function App() {
-  // --- STATE MANAGEMENT ---
-  const [roomId, setRoomId] = useState("");
-  const [userName, setUserName] = useState("");
-  const [joined, setJoined] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [code, setCode] = useState("// Start coding here...");
-  const [language, setLanguage] = useState("javascript");
-  const [stdin, setStdin] = useState("");
-  const [output, setOutput] = useState("");
-  const [copySuccess, setCopySuccess] = useState("");
-  
-  // State for the automatic typing lock
-  const [isEditorLocked, setIsEditorLocked] = useState(false);
-  const [lockHolder, setLockHolder] = useState(null); // Username of the person typing
-  const [mySocketId, setMySocketId] = useState(null);
+app.use(cors({ origin: frontendURL }));
 
-  // --- REFS ---
-  const socketRef = useRef(null);
-  const stopTypingTimeoutRef = useRef(null);
+const io = new Server(server, {
+  cors: { origin: frontendURL, methods: ["GET", "POST"] },
+});
 
-  // --- SIDE EFFECTS & SOCKET HANDLING ---
-  useEffect(() => {
-    if (!joined) return;
+const userSocketMap = {};
 
-    const socket = io(SERVER_URL);
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setMySocketId(socket.id);
-    });
-
-    socket.emit("join", { roomId, username: userName });
-
-    socket.on("joined", ({ clients: serverClients }) => {
-      setClients(serverClients);
-    });
-
-    socket.on("code-change", ({ code: newCode }) => {
-      setCode(newCode);
-    });
-
-    socket.on('lock-status-update', ({ lockedBy, username }) => {
-      setLockHolder(username);
-      // The check now correctly uses the state variable for our ID.
-      setIsEditorLocked(lockedBy !== null && lockedBy !== socket.id);
-    });
-
-    socket.on("disconnected", ({ socketId }) => {
-      setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
-    });
-
-    // --- CLEANUP LOGIC ---
-    return () => {
-      if (socket) socket.disconnect();
-      if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
-    };
-  }, [joined, roomId, userName]);
-
-
-  // --- EVENT HANDLERS ---
-  const handleJoinRoom = () => {
-    if (roomId.trim() && userName.trim()) setJoined(true);
-  };
-  
-  const handleLeaveRoom = () => {
-    if (lockHolder === userName && socketRef.current) {
-      socketRef.current.emit('stop-typing-lock', { roomId });
-    }
-    setJoined(false);
-    setRoomId(""); setUserName(""); setClients([]); setCode("// Start coding here...");
-    setLockHolder(null); setIsEditorLocked(false); setMySocketId(null);
-  };
-  
-  const handleCopyRoomId = () => {
-    navigator.clipboard.writeText(roomId);
-    setCopySuccess("Copied!");
-    setTimeout(() => setCopySuccess(""), 2000);
-  };
-
-  const handleCodeChange = (newCode) => {
-    setCode(newCode);
-    if (!isEditorLocked && socketRef.current) {
-      if (!lockHolder) {
-        socketRef.current.emit('start-typing-lock', { roomId });
-      }
-      socketRef.current.emit("code-change", { roomId, code: newCode });
-      if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current);
-      stopTypingTimeoutRef.current = setTimeout(() => {
-        if (socketRef.current) socketRef.current.emit('stop-typing-lock', { roomId });
-      }, 2000);
-    }
-  };
-  
-  const handleRunCode = () => {
-    setOutput("Executing...");
-    if (socketRef.current) {
-      socketRef.current.emit("compileCode", { code, roomId, language, version: "*", stdin });
-    }
-  };
-
-  // --- RENDER LOGIC ---
-  // The 'join' screen is now a modal overlay
-  return (
-    <div className="app-container">
-      {!joined && (
-        <div className="join-modal-overlay">
-          <div className="join-modal-content">
-            <h1>Real-Time Code Editor</h1>
-            <input type="text" placeholder="Room ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} onKeyUp={(e) => e.key === 'Enter' && handleJoinRoom()} />
-            <button className="btn-join" onClick={handleJoinRoom}>Join Room</button>
-          </div>
-        </div>
-      )}
-
-      {/* The main editor page, which is always rendered but blurred when not joined */}
-      <div className={`editor-container ${!joined ? 'blurred' : ''}`}>
-        <div className="sidebar">
-          <div className="room-info">
-            <h2>Room: {roomId || '...'}</h2>
-            <button className="btn btn-secondary" onClick={handleCopyRoomId}>
-              {copySuccess || "Copy ID"}
-            </button>
-          </div>
-          <h3>Users ({clients.length})</h3>
-          <ul className="user-list">
-            {clients.map((client) => (
-              <li className="client-item" key={client.socketId}>
-                <div className="avatar">{client.username.charAt(0).toUpperCase()}</div>
-                <span>{client.username}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="typing-indicator">
-            {lockHolder ? (
-              <>
-                <strong>{lockHolder}</strong> is typing...
-              </>
-            ) : (
-              '\u00A0' // Non-breaking space to maintain layout
-            )}
-          </div>
-          <div className="sidebar-footer">
-            <select className="language-selector" value={language} onChange={(e) => setLanguage(e.target.value)}>
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
-            </select>
-            <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
-          </div>
-        </div>
-
-        <div className="editor-wrapper">
-          <Editor
-            height="55%"
-            language={language}
-            value={code}
-            onChange={handleCodeChange}
-            theme="vs-dark"
-            options={{
-              readOnly: isEditorLocked,
-              minimap: { enabled: false },
-              fontSize: 16,
-              wordWrap: 'on'
-            }}
-          />
-          <div className="io-wrapper">
-            <div className="input-area">
-              <h4>Input </h4>
-              <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..." />
-            </div>
-            <div className="output-area">
-              <h4>Output</h4>
-              <textarea className="io-console" value={output} readOnly placeholder="Output will appear here..." />
-            </div>
-          </div>
-          <button className="btn btn-primary run-btn" onClick={handleRunCode}>Execute Code</button>
-        </div>
-      </div>
-    </div>
-  );
+function getAllConnectedClients(roomId) {
+  const room = io.sockets.adapter.rooms.get(roomId);
+  if (!room) return [];
+  const socketIds = Array.from(room);
+  return socketIds.map((socketId) => ({
+    socketId,
+    username: userSocketMap[socketId],
+  }));
 }
 
-export default App;
+io.on("connection", (socket) => {
+  console.log(`User Connected: ${socket.id}`);
+
+  socket.on("join", ({ roomId, username }) => {
+    userSocketMap[socket.id] = username;
+    socket.join(roomId);
+
+    const clients = getAllConnectedClients(roomId);
+    io.to(roomId).emit("joined", { clients, username, socketId: socket.id });
+  });
+
+  socket.on("code-change", ({ roomId, code }) => {
+    socket.to(roomId).emit("code-change", { code });
+  });
+
+  // This simple event just tells others that a user is typing.
+  socket.on('typing', ({ roomId, username }) => {
+    socket.to(roomId).emit('typing', { username });
+  });
+
+  socket.on("disconnecting", () => {
+    const rooms = [...socket.rooms];
+    rooms.forEach((roomId) => {
+      socket.to(roomId).emit("disconnected", {
+        socketId: socket.id,
+        username: userSocketMap[socket.id],
+      });
+    });
+    delete userSocketMap[socket.id];
+    socket.leave();
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`User Disconnected: ${socket.id}`);
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
