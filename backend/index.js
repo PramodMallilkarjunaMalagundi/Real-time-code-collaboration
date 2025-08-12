@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL BACKEND (with Output Sync)
+//                      FINAL BACKEND (with Input Sync)
 // =================================================================
 
 const express = require("express");
@@ -56,9 +56,13 @@ io.on("connection", (socket) => {
   socket.on('language-change', ({ roomId, language }) => {
     socket.to(roomId).emit('language-change', { language });
   });
+  
+  // --- ADDED: Listener to synchronize the Input (stdin) box ---
+  socket.on('input-change', ({ roomId, stdin }) => {
+    socket.to(roomId).emit('input-change', { stdin });
+  });
 
-  // --- THIS IS THE ONLY CHANGE IN THIS FILE ---
-  socket.on('compileCode', async ({ roomId, code, language, stdin }) => { // Added roomId to destructuring
+  socket.on('compileCode', async ({ roomId, code, language, stdin }) => {
     try {
         const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
             language: language,
@@ -66,17 +70,9 @@ io.on("connection", (socket) => {
             files: [{ content: code }],
             stdin: stdin,
         });
-        
-        // Changed from socket.emit to io.to(roomId).emit to broadcast to everyone
         io.to(roomId).emit('code-response', response.data);
-
     } catch (error) {
-        // Also broadcast the error to everyone
-        io.to(roomId).emit('code-response', {
-            run: {
-                stderr: error.message,
-            }
-        });
+        io.to(roomId).emit('code-response', { run: { stderr: error.message } });
     }
   });
 

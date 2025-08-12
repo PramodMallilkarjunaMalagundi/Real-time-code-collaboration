@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL FRONTEND (with Output Sync)
+//                      FINAL FRONTEND (with Input Sync & Toasts)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
@@ -24,6 +24,7 @@ function App() {
 
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const executionToastId = useRef(null); // Ref to hold the ID of the "Running..." toast
 
   useEffect(() => {
     if (!joined) return;
@@ -38,10 +39,20 @@ function App() {
 
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
     socket.on("language-change", ({ language: newLanguage }) => setLanguage(newLanguage));
+    
+    // --- ADDED: Listener to receive synchronized input ---
+    socket.on("input-change", ({ stdin: newStdin }) => setStdin(newStdin));
 
     socket.on("code-response", (response) => {
+        // --- ADDED: Logic to handle execution toasts ---
+        toast.dismiss(executionToastId.current); // Remove the "Running..." toast
         const result = response.run.stderr || response.run.output || "No output produced.";
         setOutput(result);
+        if (response.run.stderr) {
+            toast.error("Execution failed!");
+        } else {
+            toast.success("Execution successful!");
+        }
     });
 
     socket.on('typing', ({ username }) => {
@@ -88,18 +99,27 @@ function App() {
     }
   };
 
-  // --- THIS IS THE ONLY CHANGE IN THIS FILE ---
-  const handleRunCode = () => {
-    setOutput("Executing...");
+  // --- ADDED: Handler to send synchronized input ---
+  const handleInputChange = (e) => {
+    const newStdin = e.target.value;
+    setStdin(newStdin);
     if (socketRef.current) {
-      // Added roomId to the payload so the backend knows which room to broadcast to
+      socketRef.current.emit('input-change', { roomId, stdin: newStdin });
+    }
+  };
+
+  const handleRunCode = () => {
+    setOutput(""); // Clear previous output
+    // --- ADDED: Show "Running..." toast and save its ID ---
+    executionToastId.current = toast.loading("Running code...");
+    if (socketRef.current) {
       socketRef.current.emit("compileCode", { roomId, code, language, stdin });
     }
   };
 
   return (
     <div className="app-container">
-      <div><Toaster position="top-right" /></div>
+      <div><Toaster position="top-right" toastOptions={{ style: { background: '#333', color: '#fff' } }} /></div>
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">
@@ -143,7 +163,8 @@ function App() {
           <div className="io-wrapper">
             <div className="input-area">
               <h4>Input </h4>
-              <textarea className="io-console" value={stdin} onChange={(e) => setStdin(e.target.value)} placeholder="Enter program input here..." />
+              {/* --- UPDATED: This now uses the new handler --- */}
+              <textarea className="io-console" value={stdin} onChange={handleInputChange} placeholder="Enter program input here..." />
             </div>
             <div className="output-area">
               <h4>Output</h4>
