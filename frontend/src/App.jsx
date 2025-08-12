@@ -1,12 +1,11 @@
 // =================================================================
-//                      COMPLETE and CORRECT App.jsx
+//                      FINAL CORRECTED App.jsx
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
-import toast, { Toaster } from 'react-hot-toast';
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -21,12 +20,13 @@ function App() {
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
+  
+  // State for the simple "is typing" indicator
   const [typingUser, setTypingUser] = useState(null);
 
   // --- REFS ---
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const executeToastIdRef = useRef(null);
 
   // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
@@ -35,77 +35,79 @@ function App() {
     const socket = io(SERVER_URL);
     socketRef.current = socket;
 
-    socket.on('connect', () => { /* ... */ });
+    socket.on('connect', () => {
+      console.log(`Connected to server with ID: ${socket.id}`);
+    });
+
     socket.emit("join", { roomId, username: userName });
 
-    socket.on("joined", ({ clients: serverClients, username }) => {
+    // --- EVENT LISTENERS ---
+    socket.on("joined", ({ clients: serverClients }) => {
       setClients(serverClients);
-      if (username !== userName) toast.success(`${username} joined the room.`);
     });
-    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
+
+    socket.on("code-change", ({ code: newCode }) => {
+      setCode(newCode);
+    });
+
     socket.on('typing', ({ username }) => {
+      // Don't show the "is typing" message for yourself
       if (username !== userName) {
         setTypingUser(username);
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
           setTypingUser(null);
-        }, 2000);
-      }
-    });
-    socket.on('language-change', ({ language: newLanguage }) => setLanguage(newLanguage));
-    socket.on("disconnected", ({ socketId, username }) => {
-      setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
-      toast.error(`${username} left the room.`);
-    });
-    socket.on("codeResponse", (response) => {
-      if (executeToastIdRef.current) toast.dismiss(executeToastIdRef.current);
-      const outputMsg = response.run.output || response.run.stderr || "No output.";
-      setOutput(outputMsg);
-      if (response.run.stderr) {
-        toast.error('Code execution failed!');
-      } else {
-        toast.success('Code executed successfully!');
+        }, 2000); // "is typing" message disappears after 2 seconds
       }
     });
 
+    socket.on("disconnected", ({ socketId }) => {
+      setClients((prevClients) => prevClients.filter((client) => client.socketId !== socketId));
+    });
+
+    // --- CLEANUP ---
     return () => {
-        if (socket) socket.disconnect();
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        if (executeToastIdRef.current) toast.dismiss(executeToastIdRef.current);
+      if (socket) socket.disconnect();
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [joined, roomId, userName]);
 
 
   // --- EVENT HANDLERS ---
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
-  const handleLeaveRoom = () => { setJoined(false); setRoomId(""); setUserName(""); setClients([]); setCode("// Start coding here..."); setTypingUser(null); toast('You have left the room.', { icon: '👋' }); };
-  const handleCopyRoomId = () => { navigator.clipboard.writeText(roomId); toast.success('Room ID copied!'); };
+
+  const handleLeaveRoom = () => {
+    setJoined(false);
+    setRoomId(""); setUserName(""); setClients([]); setCode("// Start coding here...");
+    setTypingUser(null);
+  };
+  
+  const handleCopyRoomId = () => {
+    navigator.clipboard.writeText(roomId);
+    setCopySuccess("Copied!");
+    setTimeout(() => setCopySuccess(""), 2000);
+  };
+
   const handleCodeChange = (newCode) => {
     setCode(newCode);
     if (socketRef.current) {
+      // Send the code change on every keystroke
       socketRef.current.emit("code-change", { roomId, code: newCode });
+      // Also send a "typing" event so others can see the indicator
       socketRef.current.emit('typing', { roomId, username: userName });
     }
   };
-  const handleLanguageChange = (e) => {
-    const newLanguage = e.target.value;
-    setLanguage(newLanguage);
-    if (socketRef.current) socketRef.current.emit('language-change', { roomId, language: newLanguage });
-  };
+  
   const handleRunCode = () => {
     setOutput("Executing...");
-    executeToastIdRef.current = toast.loading('Executing code...');
     if (socketRef.current) {
-      socketRef.current.emit("compileCode", { code, language, stdin });
+      socketRef.current.emit("compileCode", { code, roomId, language, stdin });
     }
   };
-
 
   // --- RENDER LOGIC ---
   return (
     <div className="app-container">
-      <Toaster position="bottom-right" reverseOrder={false} />
-
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">
@@ -140,11 +142,11 @@ function App() {
                 <strong>{typingUser}</strong> is typing...
               </>
             ) : (
-              '\u00A0'
+              '\u00A0' // Non-breaking space to maintain layout
             )}
           </div>
           <div className="sidebar-footer">
-            <select className="language-selector" value={language} onChange={handleLanguageChange}>
+            <select className="language-selector" value={language} onChange={(e) => setLanguage(e.target.value)}>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
                 <option value="java">Java</option>
