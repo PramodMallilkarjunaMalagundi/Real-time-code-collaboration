@@ -19,6 +19,7 @@
     "express": "^4.21.2",
     "node-fetch": "^3.3.2",
     "prompt-sync": "^4.2.0",
+    "react-hot-toast": "^2.5.2",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
