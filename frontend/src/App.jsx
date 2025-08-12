@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL FRONTEND (All Features)
+//                      FINAL FRONTEND (All Features Including Execution)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
@@ -11,7 +11,6 @@ import { Toaster, toast } from 'react-hot-toast';
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 function App() {
-  // --- STATE MANAGEMENT ---
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
   const [joined, setJoined] = useState(false);
@@ -23,17 +22,13 @@ function App() {
   const [copySuccess, setCopySuccess] = useState("");
   const [typingUser, setTypingUser] = useState(null);
 
-  // --- REFS ---
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // --- SIDE EFFECTS & SOCKET HANDLING ---
   useEffect(() => {
     if (!joined) return;
-
     const socket = io(SERVER_URL);
     socketRef.current = socket;
-
     socket.emit("join", { roomId, username: userName });
 
     socket.on("joined", ({ clients: serverClients, username }) => {
@@ -42,19 +37,20 @@ function App() {
     });
 
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
-    
-    // ADDED: Listener for language changes
-    socket.on("language-change", ({ language: newLanguage }) => {
-        setLanguage(newLanguage);
+    socket.on("language-change", ({ language: newLanguage }) => setLanguage(newLanguage));
+
+    // ADDED: Listener for the response after code execution
+    socket.on("code-response", (response) => {
+        // The API returns 'stderr' for errors and 'output' for success
+        const result = response.run.stderr || response.run.output || "No output produced.";
+        setOutput(result);
     });
 
     socket.on('typing', ({ username }) => {
       if (username !== userName) {
         setTypingUser(username);
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => {
-          setTypingUser(null);
-        }, 2000);
+        typingTimeoutRef.current = setTimeout(() => { setTypingUser(null); }, 2000);
       }
     });
 
@@ -69,16 +65,12 @@ function App() {
     };
   }, [joined, roomId, userName]);
 
-
-  // --- EVENT HANDLERS ---
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
-  const handleLeaveRoom = () => { /* ... reset state ... */ setJoined(false); };
+  const handleLeaveRoom = () => { setJoined(false); };
   
-  // ADDED: The copy room ID handler is now back
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId);
-    setCopySuccess("Copied!");
-    toast.success("Room ID copied!");
+    setCopySuccess("Copied!"); toast.success("Room ID copied!");
     setTimeout(() => setCopySuccess(""), 2000);
   };
 
@@ -90,7 +82,6 @@ function App() {
     }
   };
   
-  // ADDED: Handler to change language and notify others
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
@@ -99,13 +90,16 @@ function App() {
     }
   };
 
-  const handleRunCode = () => { /* ... run code logic ... */ };
+  const handleRunCode = () => {
+    setOutput("Executing...");
+    if (socketRef.current) {
+      socketRef.current.emit("compileCode", { code, language, stdin });
+    }
+  };
 
-  // --- RENDER LOGIC ---
   return (
     <div className="app-container">
       <div><Toaster position="top-right" /></div>
-
       {!joined && (
         <div className="join-modal-overlay">
           <div className="join-modal-content">
@@ -116,15 +110,11 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* UPDATED: Added the conditional 'blurred' class to this container */}
       <div className={`editor-container ${!joined ? 'blurred' : ''}`}>
         <div className="sidebar">
           <div className="room-info">
             <h2>Room: {roomId || '...'}</h2>
-            <button className="btn btn-secondary" onClick={handleCopyRoomId}>
-              {copySuccess || "Copy ID"}
-            </button>
+            <button className="btn btn-secondary" onClick={handleCopyRoomId}>{copySuccess || "Copy ID"}</button>
           </div>
           <h3>Users ({clients.length})</h3>
           <ul className="user-list">
@@ -139,25 +129,16 @@ function App() {
             {typingUser ? ( <><strong>{typingUser}</strong> is typing...</> ) : ( '\u00A0' )}
           </div>
           <div className="sidebar-footer">
-            {/* UPDATED: This now uses the new event handler */}
             <select className="language-selector" value={language} onChange={handleLanguageChange}>
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
+                <option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option><option value="cpp">C++</option>
             </select>
             <button className="btn btn-secondary leave-btn" onClick={handleLeaveRoom}>Leave Room</button>
           </div>
         </div>
-
         <div className="editor-wrapper">
           <Editor
-            height="55%"
-            language={language}
-            value={code}
-            onChange={handleCodeChange}
-            theme="vs-dark"
-            options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}
+            height="55%" language={language} value={code} onChange={handleCodeChange}
+            theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 16, wordWrap: 'on' }}
           />
           <div className="io-wrapper">
             <div className="input-area">
