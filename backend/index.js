@@ -1,12 +1,12 @@
 // =================================================================
-//                      FINAL BACKEND (All Features Including Execution)
+//                      FINAL BACKEND (with Output Sync)
 // =================================================================
 
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const axios = require("axios"); // ADDED: For making API requests
+const axios = require("axios");
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +30,6 @@ function getAllConnectedClients(roomId) {
   }));
 }
 
-// Helper object to map our language names to Piston API versions
 const languageVersions = {
     javascript: "18.15.0",
     python: "3.10.0",
@@ -58,22 +57,22 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit('language-change', { language });
   });
 
-  // ADDED: Listener for the 'compileCode' event
-  socket.on('compileCode', async ({ code, language, stdin }) => {
+  // --- THIS IS THE ONLY CHANGE IN THIS FILE ---
+  socket.on('compileCode', async ({ roomId, code, language, stdin }) => { // Added roomId to destructuring
     try {
         const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
             language: language,
-            version: languageVersions[language] || "*", // Use mapped version or latest
+            version: languageVersions[language] || "*",
             files: [{ content: code }],
             stdin: stdin,
         });
-
-        // Send the result ONLY to the user who made the request
-        socket.emit('code-response', response.data);
+        
+        // Changed from socket.emit to io.to(roomId).emit to broadcast to everyone
+        io.to(roomId).emit('code-response', response.data);
 
     } catch (error) {
-        // Send an error message back to the user
-        socket.emit('code-response', {
+        // Also broadcast the error to everyone
+        io.to(roomId).emit('code-response', {
             run: {
                 stderr: error.message,
             }

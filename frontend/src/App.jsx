@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL FRONTEND (All Features Including Execution)
+//                      FINAL FRONTEND (with Output Sync)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
@@ -39,9 +39,7 @@ function App() {
     socket.on("code-change", ({ code: newCode }) => setCode(newCode));
     socket.on("language-change", ({ language: newLanguage }) => setLanguage(newLanguage));
 
-    // ADDED: Listener for the response after code execution
     socket.on("code-response", (response) => {
-        // The API returns 'stderr' for errors and 'output' for success
         const result = response.run.stderr || response.run.output || "No output produced.";
         setOutput(result);
     });
@@ -90,10 +88,12 @@ function App() {
     }
   };
 
+  // --- THIS IS THE ONLY CHANGE IN THIS FILE ---
   const handleRunCode = () => {
     setOutput("Executing...");
     if (socketRef.current) {
-      socketRef.current.emit("compileCode", { code, language, stdin });
+      // Added roomId to the payload so the backend knows which room to broadcast to
+      socketRef.current.emit("compileCode", { roomId, code, language, stdin });
     }
   };
 
