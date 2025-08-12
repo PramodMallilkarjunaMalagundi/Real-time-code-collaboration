@@ -1,5 +1,5 @@
 // =================================================================
-//                      FINAL BACKEND (with Typing Event)
+//                      FINAL BACKEND (All Features)
 // =================================================================
 
 const express = require("express");
@@ -30,8 +30,6 @@ function getAllConnectedClients(roomId) {
 }
 
 io.on("connection", (socket) => {
-  console.log(`User Connected: ${socket.id}`);
-
   socket.on("join", ({ roomId, username }) => {
     userSocketMap[socket.id] = username;
     socket.join(roomId);
@@ -44,9 +42,13 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code-change", { code });
   });
 
-  // ADDED: This simple event just tells others that a user is typing.
   socket.on('typing', ({ roomId, username }) => {
     socket.to(roomId).emit('typing', { username });
+  });
+
+  // ADDED: Listener for language changes
+  socket.on('language-change', ({ roomId, language }) => {
+    socket.to(roomId).emit('language-change', { language });
   });
 
   socket.on("disconnecting", () => {
@@ -59,10 +61,6 @@ io.on("connection", (socket) => {
     });
     delete userSocketMap[socket.id];
     socket.leave();
-  });
-
-  socket.on("disconnect", () => {
-    console.log(`User Disconnected: ${socket.id}`);
   });
 });
 

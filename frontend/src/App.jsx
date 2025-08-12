@@ -1,12 +1,11 @@
 // =================================================================
-//                      FINAL FRONTEND (with All Features)
+//                      FINAL FRONTEND (All Features)
 // =================================================================
 
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
-// ADDED: Import the notification library
 import { Toaster, toast } from 'react-hot-toast';
 
 const SERVER_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
@@ -22,8 +21,6 @@ function App() {
   const [stdin, setStdin] = useState("");
   const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
-  
-  // ADDED: State for the simple "is typing" indicator
   const [typingUser, setTypingUser] = useState(null);
 
   // --- REFS ---
@@ -39,20 +36,18 @@ function App() {
 
     socket.emit("join", { roomId, username: userName });
 
-    // --- EVENT LISTENERS ---
     socket.on("joined", ({ clients: serverClients, username }) => {
-      // UPDATED: Show notification only to existing users
-      if (username !== userName) {
-        toast.success(`${username} joined the room.`);
-      }
+      if (username !== userName) toast.success(`${username} joined the room.`);
       setClients(serverClients);
     });
 
-    socket.on("code-change", ({ code: newCode }) => {
-      setCode(newCode);
+    socket.on("code-change", ({ code: newCode }) => setCode(newCode));
+    
+    // ADDED: Listener for language changes
+    socket.on("language-change", ({ language: newLanguage }) => {
+        setLanguage(newLanguage);
     });
 
-    // ADDED: Listener for typing event
     socket.on('typing', ({ username }) => {
       if (username !== userName) {
         setTypingUser(username);
@@ -64,12 +59,10 @@ function App() {
     });
 
     socket.on("disconnected", ({ username }) => {
-      // UPDATED: Show notification when a user leaves
-      toast.error(`${username} left the room.`);
+      if (username) toast.error(`${username} left the room.`);
       setClients((prevClients) => prevClients.filter((client) => client.username !== username));
     });
 
-    // --- CLEANUP ---
     return () => {
       if (socket) socket.disconnect();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -79,24 +72,38 @@ function App() {
 
   // --- EVENT HANDLERS ---
   const handleJoinRoom = () => { if (roomId.trim() && userName.trim()) setJoined(true); };
-  const handleLeaveRoom = () => { setJoined(false); /* ... reset state ... */ };
-  const handleCopyRoomId = () => { /* ... copy logic ... */ };
+  const handleLeaveRoom = () => { /* ... reset state ... */ setJoined(false); };
+  
+  // ADDED: The copy room ID handler is now back
+  const handleCopyRoomId = () => {
+    navigator.clipboard.writeText(roomId);
+    setCopySuccess("Copied!");
+    toast.success("Room ID copied!");
+    setTimeout(() => setCopySuccess(""), 2000);
+  };
 
   const handleCodeChange = (newCode) => {
     setCode(newCode);
     if (socketRef.current) {
       socketRef.current.emit("code-change", { roomId, code: newCode });
-      // UPDATED: Also send a "typing" event
       socketRef.current.emit('typing', { roomId, username: userName });
     }
   };
   
+  // ADDED: Handler to change language and notify others
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    if (socketRef.current) {
+        socketRef.current.emit('language-change', { roomId, language: newLanguage });
+    }
+  };
+
   const handleRunCode = () => { /* ... run code logic ... */ };
 
   // --- RENDER LOGIC ---
   return (
     <div className="app-container">
-      {/* ADDED: The Toaster component is required for notifications to appear */}
       <div><Toaster position="top-right" /></div>
 
       {!joined && (
@@ -110,6 +117,7 @@ function App() {
         </div>
       )}
 
+      {/* UPDATED: Added the conditional 'blurred' class to this container */}
       <div className={`editor-container ${!joined ? 'blurred' : ''}`}>
         <div className="sidebar">
           <div className="room-info">
@@ -127,18 +135,12 @@ function App() {
               </li>
             ))}
           </ul>
-          {/* ADDED: The typing indicator UI */}
           <div className="typing-indicator">
-            {typingUser ? (
-              <>
-                <strong>{typingUser}</strong> is typing...
-              </>
-            ) : (
-              '\u00A0'
-            )}
+            {typingUser ? ( <><strong>{typingUser}</strong> is typing...</> ) : ( '\u00A0' )}
           </div>
           <div className="sidebar-footer">
-            <select className="language-selector" value={language} onChange={(e) => setLanguage(e.target.value)}>
+            {/* UPDATED: This now uses the new event handler */}
+            <select className="language-selector" value={language} onChange={handleLanguageChange}>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
                 <option value="java">Java</option>
